@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Mental Health Risk Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
+
+    <div class="max-w-5xl mx-auto py-10 px-4">
+        
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-bold text-indigo-600 mb-2">AI Mental Health Analyzer</h1>
+            <p class="text-gray-500">NLP + Behavioral ML Fusion</p>
+            <div class="mt-4 inline-block bg-yellow-100 text-yellow-800 text-xs px-3 py-1 rounded-full font-semibold border border-yellow-200">
+                ⚠️ Disclaimer: This is not a medical diagnosis tool. Do not use for clinical decisions.
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- INPUT FORM -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-700">Daily Journal Input</h2>
+                <form id="healthForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-1">How are you feeling today?</label>
+                        <textarea id="journal" required rows="4" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="I feel overwhelmed by my workload..."></textarea>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Sleep (hrs)</label>
+                            <input type="number" id="sleep" required step="0.5" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Screen (hrs)</label>
+                            <input type="number" id="screen" required step="0.5" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Activity (steps)</label>
+                            <input type="number" id="activity" required class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+                        </div>
+                    </div>
+                    <button type="submit" id="analyzeBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition">
+                        Analyze Mental Health Risk
+                    </button>
+                </form>
+            </div>
+
+            <!-- RESULTS -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-center items-center text-center hidden" id="resultCard">
+                <h2 class="text-xl font-semibold mb-2 text-gray-500">Analysis Result</h2>
+                
+                <div id="riskLevel" class="text-5xl font-bold mb-2">--</div>
+                <div class="text-sm text-gray-400 mb-6">Confidence: <span id="confidence">--</span>%</div>
+
+                <div class="w-full text-left bg-gray-50 p-4 rounded-lg mb-4 border border-gray-100">
+                    <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Detected Emotion</div>
+                    <div id="emotion" class="text-lg font-medium text-gray-700 capitalize">--</div>
+                </div>
+
+                <div class="w-full text-left bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                    <div class="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-1">Explainability (SHAP Simulation)</div>
+                    <div id="explanation" class="text-sm text-indigo-900 leading-relaxed">--</div>
+                </div>
+                
+                <button onclick="loadHistory()" class="mt-6 text-indigo-600 text-sm hover:underline font-medium">Refresh Dashboard History &rarr;</button>
+            </div>
+        </div>
+
+        <!-- DASHBOARD / HISTORY -->
+        <div class="mt-8 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h2 class="text-2xl font-semibold mb-6 text-gray-700">Weekly Trend Dashboard</h2>
+            <div class="h-64 w-full">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let chartInstance = null;
+
+        document.getElementById("healthForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById("analyzeBtn");
+            btn.innerText = "Analyzing via NLP + Random Forest...";
+            btn.disabled = true;
+
+            const payload = {
+                journal: document.getElementById("journal").value,
+                sleep_hours: parseFloat(document.getElementById("sleep").value),
+                screen_time: parseFloat(document.getElementById("screen").value),
+                activity_level: parseInt(document.getElementById("activity").value)
+            };
+
+            try {
+                const res = await fetch("/api/predict", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await res.json();
+
+                // Show Results
+                document.getElementById("resultCard").classList.remove("hidden");
+                
+                const riskEl = document.getElementById("riskLevel");
+                riskEl.innerText = data.risk_level + " Risk";
+                
+                if(data.risk_level === "Low") riskEl.className = "text-5xl font-bold mb-2 text-green-500";
+                else if(data.risk_level === "Medium") riskEl.className = "text-5xl font-bold mb-2 text-yellow-500";
+                else riskEl.className = "text-5xl font-bold mb-2 text-red-500";
+
+                document.getElementById("confidence").innerText = data.confidence;
+                document.getElementById("emotion").innerText = data.emotion + " (Sentiment: " + data.sentiment_score + ")";
+                document.getElementById("explanation").innerText = data.explanation;
+
+                loadHistory(); // Update chart
+            } catch(err) {
+                alert("Error connecting to backend.");
+            } finally {
+                btn.innerText = "Analyze Mental Health Risk";
+                btn.disabled = false;
+            }
+        });
+
+        async function loadHistory() {
+            try {
+                const res = await fetch("/api/history");
+                const data = await res.json();
+                
+                const history = data.history.reverse(); // oldest to newest for charting
+                
+                const labels = history.map(h => new Date(h.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
+                const scores = history.map(h => h.risk_level === "High" ? 3 : h.risk_level === "Medium" ? 2 : 1);
+
+                if(chartInstance) chartInstance.destroy();
+                
+                const ctx = document.getElementById('trendChart').getContext('2d');
+                chartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Risk Level (1=Low, 2=Medium, 3=High)',
+                            data: scores,
+                            borderColor: '#4f46e5',
+                            backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { min: 0, max: 4, ticks: { stepSize: 1 } }
+                        }
+                    }
+                });
+            } catch (err) {
+                console.log("History empty or error fetching.");
+            }
+        }
+        
+        // Initial load
+        loadHistory();
+    </script>
+</body>
+</html>
