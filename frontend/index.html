@@ -3,20 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Mental Health Risk Analyzer</title>
+    <title>Mental Health Predictor</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     fontFamily: { sans: ['Outfit', 'sans-serif'] },
                     colors: {
-                        navy: { 800: '#0a192f', 900: '#020c1b' },
-                        blueGlow: '#64ffda',
-                        deepBlue: '#112240',
-                        lightBlue: '#233554'
+                        brandDark: '#050B14',
+                        brandBlue: '#0A192F',
+                        brandCyan: '#64FFDA',
+                        brandNeon: '#00B4DB',
+                        glassBg: 'rgba(10, 25, 47, 0.65)',
+                    },
+                    animation: {
+                        'blob': 'blob 10s infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' }
+                        }
                     }
                 }
             }
@@ -24,139 +37,277 @@
     </script>
     <style>
         body {
-            background: radial-gradient(circle at top right, #112240, #020c1b);
+            background-color: #050B14;
             color: #e6f1ff;
+            overflow-x: hidden;
         }
-        .glass-card {
-            background: rgba(17, 34, 64, 0.7);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(100, 255, 218, 0.1);
-            box-shadow: 0 10px 30px -10px rgba(2, 12, 27, 0.7);
+        
+        /* Animated Background Orbs */
+        .bg-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(100px);
+            z-index: -1;
+            opacity: 0.4;
         }
-        .input-field {
-            background: rgba(2, 12, 27, 0.5);
+        .orb-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: #00B4DB; animation: blob 15s infinite alternate; }
+        .orb-2 { bottom: -20%; right: -10%; width: 60vw; height: 60vw; background: #09203F; animation: blob 20s infinite alternate-reverse; }
+        .orb-3 { top: 40%; left: 40%; width: 30vw; height: 30vw; background: #64FFDA; opacity: 0.15; animation: blob 12s infinite; }
+
+        /* Glassmorphism Classes */
+        .glass-panel {
+            background: var(--glassBg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(100, 255, 218, 0.15);
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
+            border-radius: 24px;
+        }
+
+        /* Custom Inputs */
+        .custom-input {
+            background: rgba(5, 11, 20, 0.6);
             border: 1px solid rgba(100, 255, 218, 0.2);
-            color: #e6f1ff;
-            transition: all 0.3s ease;
+            color: #fff;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .input-field:focus {
-            border-color: #64ffda;
-            box-shadow: 0 0 10px rgba(100, 255, 218, 0.2);
+        .custom-input:focus {
+            border-color: #64FFDA;
+            background: rgba(5, 11, 20, 0.8);
+            box-shadow: 0 0 15px rgba(100, 255, 218, 0.15);
             outline: none;
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, #00b4db, #0083b0);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 180, 219, 0.4);
+        }
+
+        /* Range Slider Styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #64FFDA;
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 0 10px rgba(100, 255, 218, 0.5);
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 99px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        /* Primary Button */
+        .btn-glow {
+            background: linear-gradient(135deg, #00B4DB 0%, #0A192F 100%);
+            border: 1px solid #00B4DB;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s ease;
+        }
+        .btn-glow::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(100, 255, 218, 0.4), transparent);
+            transition: all 0.6s ease;
+        }
+        .btn-glow:hover::before { left: 100%; }
+        .btn-glow:hover {
+            box-shadow: 0 0 20px rgba(0, 180, 219, 0.5);
+            transform: translateY(-3px);
+        }
+
+        /* Scanner Line Animation for Results */
+        @keyframes scan {
+            0% { top: 0; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+        .scanner-line {
+            position: absolute;
+            left: 0; width: 100%; height: 2px;
+            background: #64FFDA;
+            box-shadow: 0 0 10px #64FFDA, 0 0 20px #64FFDA;
+            animation: scan 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            display: none;
+            z-index: 50;
         }
     </style>
 </head>
-<body class="font-sans min-h-screen pb-10">
+<body class="antialiased selection:bg-brandCyan selection:text-brandDark">
 
-    <div class="max-w-6xl mx-auto pt-12 px-6">
-        
-        <header class="text-center mb-12">
-            <h1 class="text-5xl font-bold mb-3 tracking-tight" style="background: linear-gradient(to right, #64ffda, #00b4db); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-                MindScape AI
-            </h1>
-            <p class="text-lg text-blue-200 opacity-80">Neuro-Behavioral Risk Analysis & NLP Fusion</p>
-            <div class="mt-6 inline-flex items-center space-x-2 bg-blue-900/40 text-blueGlow text-xs px-4 py-2 rounded-full font-medium border border-blueGlow/30 backdrop-blur-sm">
-                <span>⚠️</span>
-                <span>AI predictive model only. Not for medical diagnosis.</span>
+    <!-- Ambient Background -->
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+    <div class="bg-orb orb-3"></div>
+
+    <!-- Navigation Bar -->
+    <nav class="fixed w-full z-50 top-0 transition-all duration-300" style="background: rgba(5, 11, 20, 0.8); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(100,255,218,0.1);">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brandCyan to-brandNeon flex items-center justify-center shadow-[0_0_15px_rgba(100,255,218,0.4)]">
+                    <svg class="w-6 h-6 text-brandDark" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                </div>
+                <span class="text-2xl font-bold tracking-tight text-white">Mental Health <span class="text-transparent bg-clip-text bg-gradient-to-r from-brandCyan to-brandNeon">Predictor</span></span>
             </div>
-        </header>
+            <div class="hidden md:flex items-center gap-6 text-sm font-medium text-gray-400">
+                <a href="#" class="hover:text-brandCyan transition-colors">Dashboard</a>
+                <a href="#" class="hover:text-brandCyan transition-colors">Insights</a>
+                <div class="px-4 py-1.5 rounded-full border border-gray-700 bg-gray-800/50 flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full bg-brandCyan animate-pulse"></div>
+                    System Online
+                </div>
+            </div>
+        </div>
+    </nav>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+    <main class="max-w-7xl mx-auto pt-32 pb-20 px-6 relative z-10">
+        
+        <!-- Header Section -->
+        <div class="text-center mb-16 max-w-3xl mx-auto">
+            <h1 class="text-5xl md:text-6xl font-extrabold mb-6 leading-tight">
+                Analyze your <br/>
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-brandCyan via-brandNeon to-blue-500">Neuro-Behavioral State</span>
+            </h1>
+            <p class="text-lg text-gray-400 mb-8 font-light">
+                Our advanced NLP and Machine Learning fusion engine analyzes your daily habits and journal entries to predict mental well-being trends.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
             
-            <!-- INPUT FORM -->
-            <div class="lg:col-span-5 glass-card p-8 rounded-2xl relative overflow-hidden group">
-                <div class="absolute top-0 right-0 w-32 h-32 bg-blueGlow opacity-5 rounded-full blur-3xl group-hover:opacity-10 transition duration-500"></div>
-                <h2 class="text-2xl font-semibold mb-6 text-blue-50 flex items-center">
-                    <svg class="w-6 h-6 mr-2 text-blueGlow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                    Daily Check-In
-                </h2>
-                <form id="healthForm" class="space-y-6 relative z-10">
-                    <div>
-                        <label class="block text-sm font-medium text-blue-200 mb-2">How are you feeling today?</label>
-                        <textarea id="journal" required rows="4" class="w-full input-field rounded-xl p-4 text-sm" placeholder="Reflect on your day, your stressors, and emotions..."></textarea>
+            <!-- INPUT PANEL -->
+            <div class="lg:col-span-5 glass-panel p-8 relative group">
+                <div class="flex items-center gap-3 mb-8">
+                    <div class="p-2 rounded-lg bg-brandCyan/10 text-brandCyan">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                    </div>
+                    <h2 class="text-2xl font-bold text-white tracking-wide">Daily Input</h2>
+                </div>
+
+                <form id="healthForm" class="space-y-8">
+                    <!-- Journal -->
+                    <div class="space-y-3">
+                        <label class="flex items-center gap-2 text-sm font-semibold text-gray-300">
+                            <span>📝</span> Personal Journal
+                        </label>
+                        <textarea id="journal" required rows="4" class="w-full custom-input rounded-xl p-4 text-sm" placeholder="How was your day? What's on your mind?..."></textarea>
                     </div>
                     
-                    <div class="grid grid-cols-3 gap-4">
-                        <div class="flex flex-col">
-                            <label class="text-xs font-medium text-blue-300 mb-2 uppercase tracking-wider">Sleep (hrs)</label>
-                            <input type="number" id="sleep" required step="0.5" placeholder="7.5" class="w-full input-field rounded-lg p-3 text-center">
+                    <!-- Sliders -->
+                    <div class="space-y-6 bg-brandDark/40 p-5 rounded-2xl border border-white/5">
+                        
+                        <!-- Sleep -->
+                        <div>
+                            <div class="flex justify-between text-sm font-medium text-gray-300 mb-3">
+                                <label class="flex items-center gap-2"><span>😴</span> Sleep Duration</label>
+                                <span class="text-brandCyan font-bold" id="sleepVal">7.5 hrs</span>
+                            </div>
+                            <input type="range" id="sleep" min="0" max="14" step="0.5" value="7.5" class="w-full" oninput="document.getElementById('sleepVal').innerText = this.value + ' hrs'">
                         </div>
-                        <div class="flex flex-col">
-                            <label class="text-xs font-medium text-blue-300 mb-2 uppercase tracking-wider">Screen (hrs)</label>
-                            <input type="number" id="screen" required step="0.5" placeholder="4.0" class="w-full input-field rounded-lg p-3 text-center">
+
+                        <!-- Screen Time -->
+                        <div>
+                            <div class="flex justify-between text-sm font-medium text-gray-300 mb-3">
+                                <label class="flex items-center gap-2"><span>📱</span> Screen Time</label>
+                                <span class="text-brandCyan font-bold" id="screenVal">4.0 hrs</span>
+                            </div>
+                            <input type="range" id="screen" min="0" max="18" step="0.5" value="4.0" class="w-full" oninput="document.getElementById('screenVal').innerText = this.value + ' hrs'">
                         </div>
-                        <div class="flex flex-col">
-                            <label class="text-xs font-medium text-blue-300 mb-2 uppercase tracking-wider">Steps</label>
-                            <input type="number" id="activity" required placeholder="5000" class="w-full input-field rounded-lg p-3 text-center">
+
+                        <!-- Activity -->
+                        <div>
+                            <div class="flex justify-between text-sm font-medium text-gray-300 mb-3">
+                                <label class="flex items-center gap-2"><span>🏃</span> Steps/Activity</label>
+                                <span class="text-brandCyan font-bold" id="activityVal">5000</span>
+                            </div>
+                            <input type="range" id="activity" min="0" max="25000" step="500" value="5000" class="w-full" oninput="document.getElementById('activityVal').innerText = this.value">
                         </div>
                     </div>
 
-                    <button type="submit" id="analyzeBtn" class="w-full btn-primary text-white font-bold py-4 px-6 rounded-xl text-lg flex justify-center items-center">
-                        <span>Analyze Mind State</span>
-                        <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    <button type="submit" id="analyzeBtn" class="w-full btn-glow text-white font-bold py-4 px-6 rounded-xl text-lg flex justify-center items-center gap-3">
+                        <span>Run Diagnostics</span>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                     </button>
                 </form>
             </div>
 
             <!-- RESULTS & DASHBOARD -->
-            <div class="lg:col-span-7 flex flex-col gap-8">
+            <div class="lg:col-span-7 flex flex-col gap-8 h-full">
                 
                 <!-- PREDICTION RESULT -->
-                <div class="glass-card p-8 rounded-2xl hidden transform transition-all duration-500 scale-95 opacity-0" id="resultCard">
-                    <div class="flex justify-between items-start mb-6">
-                        <h2 class="text-xl font-semibold text-blue-100">Analysis Result</h2>
-                        <div class="text-xs font-bold px-3 py-1 rounded-full bg-lightBlue border border-blue-800 text-blue-300">
-                            Confidence: <span id="confidence" class="text-blueGlow">--</span>%
+                <div class="glass-panel p-8 relative overflow-hidden hidden transition-all duration-700" id="resultCard" style="transform: translateY(20px); opacity: 0;">
+                    <div class="scanner-line" id="scannerLine"></div>
+                    
+                    <div class="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            <span>📊</span> Diagnostic Report
+                        </h2>
+                        <div class="text-xs font-mono px-4 py-1.5 rounded-full bg-brandDark border border-brandCyan/30 text-brandCyan shadow-[0_0_10px_rgba(100,255,218,0.2)]">
+                            CONFIDENCE: <span id="confidence" class="font-bold text-white">--</span>%
                         </div>
                     </div>
                     
-                    <div class="flex flex-col md:flex-row items-center gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-8 items-center">
+                        
                         <!-- Risk Badge -->
-                        <div class="flex-shrink-0 relative flex justify-center items-center w-40 h-40 rounded-full bg-deepBlue border-4 border-lightBlue shadow-[0_0_30px_rgba(0,0,0,0.5)] transition-colors duration-500">
-                            <div id="riskLevel" class="text-3xl font-extrabold text-white text-center">--</div>
+                        <div class="md:col-span-2 flex justify-center">
+                            <div id="riskGlow" class="relative flex justify-center items-center w-48 h-48 rounded-full bg-brandDark border-[6px] border-gray-800 shadow-2xl transition-all duration-700">
+                                <div class="absolute inset-2 rounded-full border border-white/5 border-dashed animate-spin-slow"></div>
+                                <div class="text-center z-10">
+                                    <div class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-1">Status</div>
+                                    <div id="riskLevel" class="text-4xl font-extrabold text-white tracking-tighter">--</div>
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="flex-grow space-y-4 w-full">
-                            <div class="bg-navy-900/60 p-4 rounded-xl border border-lightBlue">
-                                <div class="text-xs font-semibold text-blue-400 uppercase tracking-widest mb-1">Dominant Emotion</div>
-                                <div id="emotion" class="text-xl font-medium text-white capitalize flex items-center gap-2">--</div>
+                        <!-- Details -->
+                        <div class="md:col-span-3 space-y-4">
+                            <div class="bg-black/30 p-5 rounded-2xl border border-white/5 backdrop-blur-md hover:border-brandCyan/30 transition-colors">
+                                <div class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Detected Emotion</div>
+                                <div id="emotion" class="text-2xl font-bold text-white capitalize flex items-center gap-3">--</div>
                             </div>
 
-                            <div class="bg-blue-900/20 p-4 rounded-xl border border-blueGlow/20">
-                                <div class="text-xs font-semibold text-blueGlow uppercase tracking-widest mb-1 flex items-center">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                            <div class="bg-brandNeon/10 p-5 rounded-2xl border border-brandNeon/30 backdrop-blur-md">
+                                <div class="text-xs font-bold text-brandNeon uppercase tracking-widest mb-2 flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                     Behavioral Explainability
                                 </div>
-                                <div id="explanation" class="text-sm text-blue-100 leading-relaxed">--</div>
+                                <div id="explanation" class="text-sm text-gray-300 leading-relaxed font-light">--</div>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- TREND CHART -->
-                <div class="glass-card p-8 rounded-2xl flex-grow flex flex-col min-h-[300px]">
-                    <h2 class="text-xl font-semibold mb-6 text-blue-100 flex items-center justify-between">
-                        <span>Risk Timeline</span>
-                        <button onclick="loadHistory()" class="text-blueGlow hover:text-white transition-colors p-2 rounded-full hover:bg-lightBlue">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                <div class="glass-panel p-8 flex-grow flex flex-col min-h-[350px]">
+                    <div class="flex items-center justify-between mb-8">
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            <span>📈</span> Risk Timeline
+                        </h2>
+                        <button onclick="loadHistory()" class="group text-gray-400 hover:text-brandCyan transition-colors p-2 rounded-xl hover:bg-white/5 border border-transparent hover:border-brandCyan/20">
+                            <svg class="w-5 h-5 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                         </button>
-                    </h2>
-                    <div class="flex-grow w-full h-full relative min-h-[200px]">
+                    </div>
+                    <div class="flex-grow w-full relative">
                         <canvas id="trendChart"></canvas>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    </main>
 
     <script>
         let chartInstance = null;
@@ -165,7 +316,7 @@
             e.preventDefault();
             const btn = document.getElementById("analyzeBtn");
             const originalBtnText = btn.innerHTML;
-            btn.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Processing...`;
+            btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> <span class="ml-3 tracking-widest uppercase text-sm">Processing...</span>`;
             btn.disabled = true;
 
             const payload = {
@@ -184,49 +335,57 @@
                 
                 const data = await res.json();
 
-                // Show Results with animation
                 const resultCard = document.getElementById("resultCard");
                 resultCard.classList.remove("hidden");
                 
-                // trigger reflow
-                void resultCard.offsetWidth;
+                // Play scanner animation
+                const scanner = document.getElementById("scannerLine");
+                scanner.style.display = "block";
+                scanner.style.animation = 'none';
+                scanner.offsetHeight; // trigger reflow
+                scanner.style.animation = null; 
                 
-                resultCard.classList.remove("scale-95", "opacity-0");
-                resultCard.classList.add("scale-100", "opacity-100");
-                
-                const riskEl = document.getElementById("riskLevel");
-                riskEl.innerText = data.risk_level;
-                
-                const riskCircle = riskEl.parentElement;
-                
-                if(data.risk_level === "Low") {
-                    riskCircle.style.borderColor = "#10b981"; // emerald
-                    riskCircle.style.boxShadow = "0 0 40px rgba(16, 185, 129, 0.4)";
-                }
-                else if(data.risk_level === "Medium") {
-                    riskCircle.style.borderColor = "#f59e0b"; // amber
-                    riskCircle.style.boxShadow = "0 0 40px rgba(245, 158, 11, 0.4)";
-                }
-                else {
-                    riskCircle.style.borderColor = "#ef4444"; // red
-                    riskCircle.style.boxShadow = "0 0 40px rgba(239, 68, 68, 0.4)";
-                }
+                setTimeout(() => {
+                    resultCard.style.transform = "translateY(0)";
+                    resultCard.style.opacity = "1";
+                    
+                    const riskEl = document.getElementById("riskLevel");
+                    riskEl.innerText = data.risk_level;
+                    
+                    const riskGlow = document.getElementById("riskGlow");
+                    
+                    if(data.risk_level === "Low") {
+                        riskGlow.style.borderColor = "#10b981";
+                        riskGlow.style.boxShadow = "0 0 50px rgba(16, 185, 129, 0.3), inset 0 0 30px rgba(16, 185, 129, 0.2)";
+                    }
+                    else if(data.risk_level === "Medium") {
+                        riskGlow.style.borderColor = "#f59e0b";
+                        riskGlow.style.boxShadow = "0 0 50px rgba(245, 158, 11, 0.3), inset 0 0 30px rgba(245, 158, 11, 0.2)";
+                    }
+                    else {
+                        riskGlow.style.borderColor = "#ef4444";
+                        riskGlow.style.boxShadow = "0 0 50px rgba(239, 68, 68, 0.4), inset 0 0 30px rgba(239, 68, 68, 0.3)";
+                    }
 
-                document.getElementById("confidence").innerText = data.confidence;
-                
-                const emoji = {
-                    'joy': '✨', 'neutral': '😶', 'sadness': '🌧️', 'fear': '😰', 'anger': '🔥'
-                }[data.emotion] || '🧠';
-                
-                document.getElementById("emotion").innerHTML = `<span>${emoji}</span> ${data.emotion} <span class="text-sm text-blue-400 opacity-70 ml-2">(Score: ${data.sentiment_score})</span>`;
-                document.getElementById("explanation").innerText = data.explanation;
+                    document.getElementById("confidence").innerText = data.confidence;
+                    
+                    const emoji = {
+                        'joy': '✨', 'neutral': '😶', 'sadness': '🌧️', 'fear': '😰', 'anger': '🔥'
+                    }[data.emotion] || '🧠';
+                    
+                    document.getElementById("emotion").innerHTML = `<span>${emoji}</span> ${data.emotion} <span class="text-xs font-normal text-brandCyan border border-brandCyan/20 bg-brandCyan/10 px-2 py-1 rounded-full ml-auto">Score: ${data.sentiment_score}</span>`;
+                    document.getElementById("explanation").innerText = data.explanation;
 
-                loadHistory(); // Update chart
+                    loadHistory();
+                }, 400); // slight delay for dramatic effect
+
             } catch(err) {
                 alert("Error connecting to backend.");
             } finally {
-                btn.innerHTML = originalBtnText;
-                btn.disabled = false;
+                setTimeout(() => {
+                    btn.innerHTML = originalBtnText;
+                    btn.disabled = false;
+                }, 1000);
             }
         });
 
@@ -248,11 +407,12 @@
                 
                 const ctx = document.getElementById('trendChart').getContext('2d');
                 
-                // Create gradient for chart
-                const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-                gradient.addColorStop(0, 'rgba(100, 255, 218, 0.5)');
-                gradient.addColorStop(1, 'rgba(100, 255, 218, 0.0)');
+                const gradient = ctx.createLinearGradient(0, 0, 0, 350);
+                gradient.addColorStop(0, 'rgba(0, 180, 219, 0.6)');
+                gradient.addColorStop(1, 'rgba(0, 180, 219, 0.0)');
 
+                Chart.defaults.font.family = 'Outfit';
+                
                 chartInstance = new Chart(ctx, {
                     type: 'line',
                     data: {
@@ -260,16 +420,17 @@
                         datasets: [{
                             label: 'Risk Level',
                             data: scores,
-                            borderColor: '#64ffda',
+                            borderColor: '#00B4DB',
                             backgroundColor: gradient,
                             fill: true,
-                            tension: 0.4,
-                            borderWidth: 2,
-                            pointBackgroundColor: '#0a192f',
-                            pointBorderColor: '#64ffda',
+                            tension: 0.5,
+                            borderWidth: 3,
+                            pointBackgroundColor: '#050B14',
+                            pointBorderColor: '#64FFDA',
                             pointBorderWidth: 2,
-                            pointRadius: 4,
-                            pointHoverRadius: 6
+                            pointRadius: 5,
+                            pointHoverRadius: 8,
+                            pointHoverBackgroundColor: '#64FFDA'
                         }]
                     },
                     options: {
@@ -278,6 +439,13 @@
                         plugins: {
                             legend: { display: false },
                             tooltip: {
+                                backgroundColor: 'rgba(5, 11, 20, 0.9)',
+                                titleColor: '#64FFDA',
+                                bodyColor: '#fff',
+                                borderColor: 'rgba(100,255,218,0.3)',
+                                borderWidth: 1,
+                                padding: 12,
+                                displayColors: false,
                                 callbacks: {
                                     label: function(context) {
                                         let val = context.raw;
@@ -298,13 +466,15 @@
                                         if(value === 3) return 'High';
                                         return '';
                                     },
-                                    color: '#8892b0',
-                                    font: { family: 'Outfit', size: 11 }
+                                    color: '#64748b',
+                                    font: { weight: '600' }
                                 },
-                                grid: { color: 'rgba(255,255,255,0.05)' }
+                                border: { display: false },
+                                grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false }
                             },
                             x: {
-                                ticks: { color: '#8892b0', maxTicksLimit: 7, font: { family: 'Outfit', size: 11 } },
+                                ticks: { color: '#64748b', maxTicksLimit: 6 },
+                                border: { display: false },
                                 grid: { display: false }
                             }
                         }
@@ -315,7 +485,6 @@
             }
         }
         
-        // Initial load
         loadHistory();
     </script>
 </body>
