@@ -6,74 +6,154 @@
     <title>AI Mental Health Risk Analyzer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Outfit', 'sans-serif'] },
+                    colors: {
+                        navy: { 800: '#0a192f', 900: '#020c1b' },
+                        blueGlow: '#64ffda',
+                        deepBlue: '#112240',
+                        lightBlue: '#233554'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background: radial-gradient(circle at top right, #112240, #020c1b);
+            color: #e6f1ff;
+        }
+        .glass-card {
+            background: rgba(17, 34, 64, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(100, 255, 218, 0.1);
+            box-shadow: 0 10px 30px -10px rgba(2, 12, 27, 0.7);
+        }
+        .input-field {
+            background: rgba(2, 12, 27, 0.5);
+            border: 1px solid rgba(100, 255, 218, 0.2);
+            color: #e6f1ff;
+            transition: all 0.3s ease;
+        }
+        .input-field:focus {
+            border-color: #64ffda;
+            box-shadow: 0 0 10px rgba(100, 255, 218, 0.2);
+            outline: none;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #00b4db, #0083b0);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 180, 219, 0.4);
+        }
+    </style>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
+<body class="font-sans min-h-screen pb-10">
 
-    <div class="max-w-5xl mx-auto py-10 px-4">
+    <div class="max-w-6xl mx-auto pt-12 px-6">
         
-        <header class="text-center mb-10">
-            <h1 class="text-4xl font-bold text-indigo-600 mb-2">AI Mental Health Analyzer</h1>
-            <p class="text-gray-500">NLP + Behavioral ML Fusion</p>
-            <div class="mt-4 inline-block bg-yellow-100 text-yellow-800 text-xs px-3 py-1 rounded-full font-semibold border border-yellow-200">
-                ⚠️ Disclaimer: This is not a medical diagnosis tool. Do not use for clinical decisions.
+        <header class="text-center mb-12">
+            <h1 class="text-5xl font-bold mb-3 tracking-tight" style="background: linear-gradient(to right, #64ffda, #00b4db); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                MindScape AI
+            </h1>
+            <p class="text-lg text-blue-200 opacity-80">Neuro-Behavioral Risk Analysis & NLP Fusion</p>
+            <div class="mt-6 inline-flex items-center space-x-2 bg-blue-900/40 text-blueGlow text-xs px-4 py-2 rounded-full font-medium border border-blueGlow/30 backdrop-blur-sm">
+                <span>⚠️</span>
+                <span>AI predictive model only. Not for medical diagnosis.</span>
             </div>
         </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
             <!-- INPUT FORM -->
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <h2 class="text-2xl font-semibold mb-4 text-gray-700">Daily Journal Input</h2>
-                <form id="healthForm" class="space-y-4">
+            <div class="lg:col-span-5 glass-card p-8 rounded-2xl relative overflow-hidden group">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-blueGlow opacity-5 rounded-full blur-3xl group-hover:opacity-10 transition duration-500"></div>
+                <h2 class="text-2xl font-semibold mb-6 text-blue-50 flex items-center">
+                    <svg class="w-6 h-6 mr-2 text-blueGlow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                    Daily Check-In
+                </h2>
+                <form id="healthForm" class="space-y-6 relative z-10">
                     <div>
-                        <label class="block text-sm font-medium text-gray-600 mb-1">How are you feeling today?</label>
-                        <textarea id="journal" required rows="4" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="I feel overwhelmed by my workload..."></textarea>
+                        <label class="block text-sm font-medium text-blue-200 mb-2">How are you feeling today?</label>
+                        <textarea id="journal" required rows="4" class="w-full input-field rounded-xl p-4 text-sm" placeholder="Reflect on your day, your stressors, and emotions..."></textarea>
                     </div>
+                    
                     <div class="grid grid-cols-3 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-600 mb-1">Sleep (hrs)</label>
-                            <input type="number" id="sleep" required step="0.5" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <div class="flex flex-col">
+                            <label class="text-xs font-medium text-blue-300 mb-2 uppercase tracking-wider">Sleep (hrs)</label>
+                            <input type="number" id="sleep" required step="0.5" placeholder="7.5" class="w-full input-field rounded-lg p-3 text-center">
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-600 mb-1">Screen (hrs)</label>
-                            <input type="number" id="screen" required step="0.5" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <div class="flex flex-col">
+                            <label class="text-xs font-medium text-blue-300 mb-2 uppercase tracking-wider">Screen (hrs)</label>
+                            <input type="number" id="screen" required step="0.5" placeholder="4.0" class="w-full input-field rounded-lg p-3 text-center">
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-600 mb-1">Activity (steps)</label>
-                            <input type="number" id="activity" required class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <div class="flex flex-col">
+                            <label class="text-xs font-medium text-blue-300 mb-2 uppercase tracking-wider">Steps</label>
+                            <input type="number" id="activity" required placeholder="5000" class="w-full input-field rounded-lg p-3 text-center">
                         </div>
                     </div>
-                    <button type="submit" id="analyzeBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition">
-                        Analyze Mental Health Risk
+
+                    <button type="submit" id="analyzeBtn" class="w-full btn-primary text-white font-bold py-4 px-6 rounded-xl text-lg flex justify-center items-center">
+                        <span>Analyze Mind State</span>
+                        <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                     </button>
                 </form>
             </div>
 
-            <!-- RESULTS -->
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-center items-center text-center hidden" id="resultCard">
-                <h2 class="text-xl font-semibold mb-2 text-gray-500">Analysis Result</h2>
+            <!-- RESULTS & DASHBOARD -->
+            <div class="lg:col-span-7 flex flex-col gap-8">
                 
-                <div id="riskLevel" class="text-5xl font-bold mb-2">--</div>
-                <div class="text-sm text-gray-400 mb-6">Confidence: <span id="confidence">--</span>%</div>
+                <!-- PREDICTION RESULT -->
+                <div class="glass-card p-8 rounded-2xl hidden transform transition-all duration-500 scale-95 opacity-0" id="resultCard">
+                    <div class="flex justify-between items-start mb-6">
+                        <h2 class="text-xl font-semibold text-blue-100">Analysis Result</h2>
+                        <div class="text-xs font-bold px-3 py-1 rounded-full bg-lightBlue border border-blue-800 text-blue-300">
+                            Confidence: <span id="confidence" class="text-blueGlow">--</span>%
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-col md:flex-row items-center gap-6">
+                        <!-- Risk Badge -->
+                        <div class="flex-shrink-0 relative flex justify-center items-center w-40 h-40 rounded-full bg-deepBlue border-4 border-lightBlue shadow-[0_0_30px_rgba(0,0,0,0.5)] transition-colors duration-500">
+                            <div id="riskLevel" class="text-3xl font-extrabold text-white text-center">--</div>
+                        </div>
 
-                <div class="w-full text-left bg-gray-50 p-4 rounded-lg mb-4 border border-gray-100">
-                    <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Detected Emotion</div>
-                    <div id="emotion" class="text-lg font-medium text-gray-700 capitalize">--</div>
+                        <div class="flex-grow space-y-4 w-full">
+                            <div class="bg-navy-900/60 p-4 rounded-xl border border-lightBlue">
+                                <div class="text-xs font-semibold text-blue-400 uppercase tracking-widest mb-1">Dominant Emotion</div>
+                                <div id="emotion" class="text-xl font-medium text-white capitalize flex items-center gap-2">--</div>
+                            </div>
+
+                            <div class="bg-blue-900/20 p-4 rounded-xl border border-blueGlow/20">
+                                <div class="text-xs font-semibold text-blueGlow uppercase tracking-widest mb-1 flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                                    Behavioral Explainability
+                                </div>
+                                <div id="explanation" class="text-sm text-blue-100 leading-relaxed">--</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="w-full text-left bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-                    <div class="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-1">Explainability (SHAP Simulation)</div>
-                    <div id="explanation" class="text-sm text-indigo-900 leading-relaxed">--</div>
+                <!-- TREND CHART -->
+                <div class="glass-card p-8 rounded-2xl flex-grow flex flex-col min-h-[300px]">
+                    <h2 class="text-xl font-semibold mb-6 text-blue-100 flex items-center justify-between">
+                        <span>Risk Timeline</span>
+                        <button onclick="loadHistory()" class="text-blueGlow hover:text-white transition-colors p-2 rounded-full hover:bg-lightBlue">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        </button>
+                    </h2>
+                    <div class="flex-grow w-full h-full relative min-h-[200px]">
+                        <canvas id="trendChart"></canvas>
+                    </div>
                 </div>
-                
-                <button onclick="loadHistory()" class="mt-6 text-indigo-600 text-sm hover:underline font-medium">Refresh Dashboard History &rarr;</button>
-            </div>
-        </div>
-
-        <!-- DASHBOARD / HISTORY -->
-        <div class="mt-8 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <h2 class="text-2xl font-semibold mb-6 text-gray-700">Weekly Trend Dashboard</h2>
-            <div class="h-64 w-full">
-                <canvas id="trendChart"></canvas>
             </div>
         </div>
     </div>
@@ -84,7 +164,8 @@
         document.getElementById("healthForm").addEventListener("submit", async (e) => {
             e.preventDefault();
             const btn = document.getElementById("analyzeBtn");
-            btn.innerText = "Analyzing via NLP + Random Forest...";
+            const originalBtnText = btn.innerHTML;
+            btn.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Processing...`;
             btn.disabled = true;
 
             const payload = {
@@ -103,25 +184,48 @@
                 
                 const data = await res.json();
 
-                // Show Results
-                document.getElementById("resultCard").classList.remove("hidden");
+                // Show Results with animation
+                const resultCard = document.getElementById("resultCard");
+                resultCard.classList.remove("hidden");
+                
+                // trigger reflow
+                void resultCard.offsetWidth;
+                
+                resultCard.classList.remove("scale-95", "opacity-0");
+                resultCard.classList.add("scale-100", "opacity-100");
                 
                 const riskEl = document.getElementById("riskLevel");
-                riskEl.innerText = data.risk_level + " Risk";
+                riskEl.innerText = data.risk_level;
                 
-                if(data.risk_level === "Low") riskEl.className = "text-5xl font-bold mb-2 text-green-500";
-                else if(data.risk_level === "Medium") riskEl.className = "text-5xl font-bold mb-2 text-yellow-500";
-                else riskEl.className = "text-5xl font-bold mb-2 text-red-500";
+                const riskCircle = riskEl.parentElement;
+                
+                if(data.risk_level === "Low") {
+                    riskCircle.style.borderColor = "#10b981"; // emerald
+                    riskCircle.style.boxShadow = "0 0 40px rgba(16, 185, 129, 0.4)";
+                }
+                else if(data.risk_level === "Medium") {
+                    riskCircle.style.borderColor = "#f59e0b"; // amber
+                    riskCircle.style.boxShadow = "0 0 40px rgba(245, 158, 11, 0.4)";
+                }
+                else {
+                    riskCircle.style.borderColor = "#ef4444"; // red
+                    riskCircle.style.boxShadow = "0 0 40px rgba(239, 68, 68, 0.4)";
+                }
 
                 document.getElementById("confidence").innerText = data.confidence;
-                document.getElementById("emotion").innerText = data.emotion + " (Sentiment: " + data.sentiment_score + ")";
+                
+                const emoji = {
+                    'joy': '✨', 'neutral': '😶', 'sadness': '🌧️', 'fear': '😰', 'anger': '🔥'
+                }[data.emotion] || '🧠';
+                
+                document.getElementById("emotion").innerHTML = `<span>${emoji}</span> ${data.emotion} <span class="text-sm text-blue-400 opacity-70 ml-2">(Score: ${data.sentiment_score})</span>`;
                 document.getElementById("explanation").innerText = data.explanation;
 
                 loadHistory(); // Update chart
             } catch(err) {
                 alert("Error connecting to backend.");
             } finally {
-                btn.innerText = "Analyze Mental Health Risk";
+                btn.innerHTML = originalBtnText;
                 btn.disabled = false;
             }
         });
@@ -131,33 +235,78 @@
                 const res = await fetch("/api/history");
                 const data = await res.json();
                 
-                const history = data.history.reverse(); // oldest to newest for charting
+                const history = data.history.reverse();
                 
-                const labels = history.map(h => new Date(h.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
+                const labels = history.map(h => {
+                    const d = new Date(h.timestamp);
+                    return `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
+                });
+                
                 const scores = history.map(h => h.risk_level === "High" ? 3 : h.risk_level === "Medium" ? 2 : 1);
 
                 if(chartInstance) chartInstance.destroy();
                 
                 const ctx = document.getElementById('trendChart').getContext('2d');
+                
+                // Create gradient for chart
+                const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+                gradient.addColorStop(0, 'rgba(100, 255, 218, 0.5)');
+                gradient.addColorStop(1, 'rgba(100, 255, 218, 0.0)');
+
                 chartInstance = new Chart(ctx, {
                     type: 'line',
                     data: {
                         labels: labels,
                         datasets: [{
-                            label: 'Risk Level (1=Low, 2=Medium, 3=High)',
+                            label: 'Risk Level',
                             data: scores,
-                            borderColor: '#4f46e5',
-                            backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                            borderColor: '#64ffda',
+                            backgroundColor: gradient,
                             fill: true,
-                            tension: 0.3,
-                            borderWidth: 2
+                            tension: 0.4,
+                            borderWidth: 2,
+                            pointBackgroundColor: '#0a192f',
+                            pointBorderColor: '#64ffda',
+                            pointBorderWidth: 2,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let val = context.raw;
+                                        return val === 3 ? 'High Risk' : val === 2 ? 'Medium Risk' : 'Low Risk';
+                                    }
+                                }
+                            }
+                        },
                         scales: {
-                            y: { min: 0, max: 4, ticks: { stepSize: 1 } }
+                            y: { 
+                                min: 0.5, 
+                                max: 3.5, 
+                                ticks: { 
+                                    stepSize: 1,
+                                    callback: function(value) {
+                                        if(value === 1) return 'Low';
+                                        if(value === 2) return 'Med';
+                                        if(value === 3) return 'High';
+                                        return '';
+                                    },
+                                    color: '#8892b0',
+                                    font: { family: 'Outfit', size: 11 }
+                                },
+                                grid: { color: 'rgba(255,255,255,0.05)' }
+                            },
+                            x: {
+                                ticks: { color: '#8892b0', maxTicksLimit: 7, font: { family: 'Outfit', size: 11 } },
+                                grid: { display: false }
+                            }
                         }
                     }
                 });
