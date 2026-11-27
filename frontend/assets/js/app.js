@@ -1,6 +1,6 @@
 import { h, icon, iconEl, toast, clear, errorState, dropdown } from "./ui.js";
-import { session, theme } from "./session.js";
-import { onUnauthorized } from "./api.js";
+import { session, theme, returnTo } from "./session.js";
+import { onUnauthorized, tokenStore } from "./api.js";
 import * as dashboard from "./views/dashboard.js";
 import * as checkin from "./views/checkin.js";
 import * as journal from "./views/journal.js";
@@ -25,6 +25,12 @@ function parseHash() {
   const raw = location.hash.replace(/^#\/?/, "");
   const [path, qs] = raw.split("?");
   return { path: path || "dashboard", params: new URLSearchParams(qs || "") };
+}
+
+/** Navigate to a full hash such as "#/journal?open=3". */
+export function go(hash) {
+  if (location.hash === hash) render();
+  else location.hash = hash;
 }
 
 export function navigate(path, params) {
@@ -76,7 +82,11 @@ async function render() {
   if (id !== renderId) return;
 
   // Nobody signed in: everything except the sign-in page redirects there.
-  if (!profile && route !== AUTH_ROUTE) { location.replace("#/sign-in"); return; }
+  if (!profile && route !== AUTH_ROUTE) {
+    if (path !== "dashboard") returnTo.set(location.hash);
+    location.replace("#/sign-in");
+    return;
+  }
   // Accounts never need the sign-in page; guests may visit it to upgrade.
   if (profile && route === AUTH_ROUTE && !session.isGuest) { location.replace("#/dashboard"); return; }
 
@@ -89,7 +99,7 @@ async function render() {
   viewEl.classList.add("view-enter");
   window.scrollTo({ top: 0 });
 
-  const result = route.view.render(viewEl, { params, navigate, isCurrent: () => id === renderId });
+  const result = route.view.render(viewEl, { params, navigate, go, isCurrent: () => id === renderId });
   cleanup = result instanceof Promise ? null : result;
   if (result instanceof Promise) result.then((fn) => { if (id === renderId) cleanup = fn; else if (typeof fn === "function") fn(); });
 
@@ -164,6 +174,21 @@ function renderUserUi(p) {
 }
 
 session.subscribe(renderUserUi);
+
+// Another tab signed in, signed out or switched journals: follow it.
+window.addEventListener("storage", (e) => {
+  if (e.key !== tokenStore.key && e.key !== null) return;
+  if (e.newValue === e.oldValue) return;
+  session.resync();
+  if (!e.newValue) {
+    toast("Signed out in another tab", { type: "info" });
+    render();
+  } else if (parseHash().path === AUTH_ROUTE.path) {
+    navigate("dashboard"); // signed in elsewhere: leave the sign-in page
+  } else {
+    render();
+  }
+});
 
 document.addEventListener("themechange", () => {
   const { path } = parseHash();

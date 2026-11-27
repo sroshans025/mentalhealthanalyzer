@@ -231,3 +231,20 @@ def test_ephemeral_mode_provisions_unknown_keys(client, monkeypatch):
     assert first.status_code == 200
     assert client.get("/api/profile", headers=headers).json()["id"] == first.json()["id"]
     assert client.get("/api/profile", headers={"Authorization": "Bearer mhp_short"}).status_code == 401
+
+
+def test_hostile_and_unusual_input_never_crashes(client, auth):
+    headers, _ = auth
+    for path in ("/api/entries/99999999999999999999999", "/api/entries/0", "/api/entries/-1"):
+        assert client.get(path, headers=headers).status_code in (404, 422), path
+        assert client.delete(path, headers=headers).status_code in (404, 422), path
+    big = client.post("/api/entries", headers={**headers, "content-type": "application/json"},
+                      content=b'{"journal":"' + b"x" * 70_000 + b'"}')
+    assert big.status_code == 413
+    nan = client.post("/api/entries", headers={**headers, "content-type": "application/json"},
+                      content=b'{"journal":"nan day today","sleep_hours":NaN,"screen_time":3,"activity_level":5000}')
+    assert nan.status_code == 422
+    xss = "<img src=x onerror=alert(1)>"
+    res = client.post("/api/entries", headers=headers, json=entry_payload(journal=xss))
+    assert res.status_code == 201 and res.json()["journal"] == xss  # stored as text, escaped by the UI
+    assert client.post("/api/entries", headers=headers, json=entry_payload(journal="hi\x00‮ there")).json()["journal"] == "hi there"

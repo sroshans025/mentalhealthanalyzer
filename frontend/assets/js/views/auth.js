@@ -1,5 +1,5 @@
 import { ApiError } from "../api.js";
-import { session, theme } from "../session.js";
+import { session, theme, returnTo } from "../session.js";
 import { h, icon, iconEl, button, setBusy, toast, modal, illustration } from "../ui.js";
 
 const POINTS = [
@@ -13,7 +13,7 @@ const POINTS = [
  * `?mode=register` opens the create-account tab; a signed-in guest who lands
  * here is upgrading and keeps their journal.
  */
-export function render(root, { params, navigate }) {
+export function render(root, { params, navigate, go }) {
   const upgrading = session.isGuest;
   let mode = params.get("mode") === "register" || upgrading ? "register" : "signin";
 
@@ -135,11 +135,11 @@ export function render(root, { params, navigate }) {
           type: "success",
           message: result.upgraded ? "Your guest entries are now part of your account." : "Your private journal is ready.",
         });
-        navigate(result.upgraded ? "dashboard" : "check-in");
+        go(returnTo.take(result.upgraded ? "#/dashboard" : "#/check-in"));
       } else {
         const profile = await session.signIn(email.input.value.trim(), password.input.value);
         toast(`Welcome back${profile.display_name ? `, ${profile.display_name}` : ""}`, { type: "success" });
-        navigate("dashboard");
+        go(returnTo.take("#/dashboard"));
       }
     } catch (err) {
       if (err instanceof ApiError && err.status === 422 && Array.isArray(err.details)) {
@@ -161,7 +161,7 @@ export function render(root, { params, navigate }) {
     guestBtn.querySelector(".arrow").innerHTML = '<span class="spinner" aria-hidden="true"></span>';
     try {
       await session.startGuest();
-      navigate("dashboard");
+      go(returnTo.take("#/dashboard"));
     } catch (err) {
       showAlert(err.message);
       guestBtn.disabled = false;

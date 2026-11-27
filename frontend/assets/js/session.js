@@ -90,14 +90,35 @@ export const session = {
     if (state.profile?.has_account) {
       try { await api.logout(); } catch { /* the local sign-out still happens */ }
     }
-    this.forget();
+    this.forget({ clearDraft: true });
   },
 
-  /** Drop the local session without contacting the server. */
-  forget() {
+  /** Another tab changed the stored key: forget only our in-memory copy
+   *  (never touch shared storage, or tabs would undo each other). */
+  resync() {
+    state.profile = null;
+    state.ready = null;
+    subscribers.forEach((fn) => fn(null));
+  },
+
+  /** Drop the local session without contacting the server. Drafts survive
+   *  an expired session so nothing half-written is lost. */
+  forget({ clearDraft = false } = {}) {
     tokenStore.clear();
-    try { localStorage.removeItem("mhp.draft"); } catch { /* ignore */ }
+    if (clearDraft) { try { localStorage.removeItem("mhp.draft"); } catch { /* ignore */ } }
     this.setProfile(null);
+  },
+};
+
+// Where to go after signing in (set when a signed-out visitor opens a page).
+const RETURN_KEY = "mhp.returnTo";
+export const returnTo = {
+  set(hash) { try { sessionStorage.setItem(RETURN_KEY, hash); } catch { /* ignore */ } },
+  /** Read and clear the saved destination; `fallback` when none. */
+  take(fallback) {
+    let value = null;
+    try { value = sessionStorage.getItem(RETURN_KEY); sessionStorage.removeItem(RETURN_KEY); } catch { /* ignore */ }
+    return value && /^#\/[a-z-]+/.test(value) && !value.startsWith("#/sign-in") ? value : fallback;
   },
 };
 

@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response, status
 from sqlalchemy.exc import IntegrityError
 from fastapi.responses import StreamingResponse
 
@@ -32,6 +32,7 @@ Profile = dict[str, Any]
 RiskLevel = Literal["Low", "Medium", "High"]
 Emotion = Literal["joy", "neutral", "sadness", "fear", "anger"]
 SortKey = Literal["newest", "oldest", "risk_desc", "risk_asc", "sentiment_desc", "sentiment_asc"]
+EntryId = Path(..., ge=1, le=2**53, description="Entry id")
 TzOffset = Query(0, ge=-14 * 60, le=14 * 60, description="Client UTC offset in minutes (east positive)")
 
 
@@ -248,7 +249,7 @@ def list_entries(
 
 
 @router.get("/entries/{entry_id}", tags=["entries"])
-def read_entry(entry_id: int, profile: Profile = Depends(current_profile)) -> dict[str, Any]:
+def read_entry(entry_id: int = EntryId, profile: Profile = Depends(current_profile)) -> dict[str, Any]:
     entry = db.get_entry(profile["id"], entry_id)
     if entry is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Entry not found.")
@@ -256,7 +257,7 @@ def read_entry(entry_id: int, profile: Profile = Depends(current_profile)) -> di
 
 
 @router.delete("/entries/{entry_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["entries"])
-def remove_entry(entry_id: int, profile: Profile = Depends(current_profile)) -> Response:
+def remove_entry(entry_id: int = EntryId, profile: Profile = Depends(current_profile)) -> Response:
     if not db.delete_entry(profile["id"], entry_id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Entry not found.")
     return Response(status_code=status.HTTP_204_NO_CONTENT)

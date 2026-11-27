@@ -175,7 +175,7 @@ export function render(root, { navigate }) {
     setBusy(deleteBtn, true, "Deleting…");
     try {
       await api.deleteProfile();
-      session.forget();
+      session.forget({ clearDraft: true });
       toast("All data deleted", { type: "success", message: "Your journal and profile have been permanently removed." });
       navigate("sign-in");
     } catch (e) {

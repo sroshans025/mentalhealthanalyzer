@@ -711,3 +711,7 @@ body.auth-mode .view { max-width: none; padding: 0; }
   .auth-top { display: none; }
 }
 .auth-tabs[hidden] + .auth-form { margin-top: 24px; }
+
+/* Long unbroken words or URLs in user text must never break the layout. */
+.excerpt, .modal-journal, .recent-body p, .entry-card, .toast p, .insight p, .user-chip .who, .key-box code { overflow-wrap: anywhere; }
+.table td { overflow-wrap: anywhere; }

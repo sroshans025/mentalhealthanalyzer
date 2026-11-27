@@ -163,7 +163,9 @@ export function render(root, { navigate }) {
       if (window.matchMedia("(max-width: 1024px)").matches) resultPane.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (err) {
       clear(resultPane).append(placeholder());
-      if (err instanceof ApiError && err.status === 409) {
+      if (err instanceof ApiError && err.status === 401) {
+        // The app is already sending the user to sign in; the draft is kept.
+      } else if (err instanceof ApiError && err.status === 409) {
         toast("Already saved", { type: "warn", message: err.message });
       } else if (err instanceof ApiError && err.status === 422 && Array.isArray(err.details)) {
         const j = err.details.find((d) => d.field === "journal");

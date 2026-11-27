@@ -11,10 +11,25 @@ export class ApiError extends Error {
   }
 }
 
+// Falls back to memory when the browser blocks storage (strict privacy
+// settings, some private modes), so the app still works for that visit.
+let memoryToken = null;
 export const tokenStore = {
-  get() { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } },
-  set(token) { try { localStorage.setItem(TOKEN_KEY, token); } catch { /* storage disabled */ } },
-  clear() { try { localStorage.removeItem(TOKEN_KEY); } catch { /* storage disabled */ } },
+  get() {
+    try { return localStorage.getItem(TOKEN_KEY) ?? memoryToken; } catch { return memoryToken; }
+  },
+  set(token) {
+    memoryToken = token;
+    try { localStorage.setItem(TOKEN_KEY, token); } catch { /* storage disabled: memory only */ }
+  },
+  clear() {
+    memoryToken = null;
+    try { localStorage.removeItem(TOKEN_KEY); } catch { /* storage disabled */ }
+  },
+  get persisted() {
+    try { return localStorage.getItem(TOKEN_KEY) !== null; } catch { return false; }
+  },
+  key: TOKEN_KEY,
 };
 
 /** Called when the server rejects the stored key (e.g. profile deleted). */

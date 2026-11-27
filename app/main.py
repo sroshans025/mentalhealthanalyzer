@@ -59,6 +59,22 @@ DOCS_CSP = (
 )
 
 
+MAX_BODY_BYTES = 64 * 1024  # a 5,000-character journal entry is far below this
+
+
+@app.middleware("http")
+async def limit_body_size(request: Request, call_next):
+    length = request.headers.get("content-length")
+    if length is not None:
+        try:
+            too_big = int(length) > MAX_BODY_BYTES
+        except ValueError:
+            return _error(400, "Invalid Content-Length header.")
+        if too_big:
+            return _error(413, "That request is too large.")
+    return await call_next(request)
+
+
 @app.middleware("http")
 async def security_and_logging(request: Request, call_next):
     started = time.perf_counter()

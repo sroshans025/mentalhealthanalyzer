@@ -16,13 +16,13 @@ const PAGE_SIZE = 10;
 export function render(root, { params, isCurrent }) {
   const state = {
     q: params.get("q") || "",
-    risk: params.get("risk") || "",
-    emotion: params.get("emotion") || "",
+    risk: ["Low", "Medium", "High"].includes(params.get("risk")) ? params.get("risk") : "",
+    emotion: Object.keys(EMOTION_META).includes(params.get("emotion")) ? params.get("emotion") : "",
     tag: params.get("tag") || "",
     from: params.get("from") || "",
     to: params.get("to") || "",
-    sort: params.get("sort") || "newest",
-    page: Math.max(1, Number(params.get("page")) || 1),
+    sort: SORTS.some(([k]) => k === params.get("sort")) ? params.get("sort") : "newest",
+    page: Math.min(10_000, Math.max(1, Math.floor(Number(params.get("page"))) || 1)),
   };
   let requestSeq = 0;
 
@@ -228,7 +228,7 @@ export function render(root, { params, isCurrent }) {
   loadTags();
   load();
   const openId = Number(params.get("open"));
-  if (openId) {
+  if (Number.isSafeInteger(openId) && openId > 0) {
     openEntry(openId);
   }
 }
