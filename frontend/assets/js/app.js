@@ -84,9 +84,12 @@ async function render() {
 }
 
 let recovering = false;
+let lastRecovery = 0;
 onUnauthorized(async () => {
-  if (recovering) return;
+  // Recover at most once a minute so a misbehaving server can't cause a loop.
+  if (recovering || Date.now() - lastRecovery < 60_000) return;
   recovering = true;
+  lastRecovery = Date.now();
   try {
     await session.recover();
     toast("Started a fresh private profile", {

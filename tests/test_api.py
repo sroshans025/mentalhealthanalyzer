@@ -207,11 +207,26 @@ def test_delete_profile_removes_everything(client, auth):
 
 
 def test_rate_limit_on_profile_creation(client):
-    codes = [client.post("/api/profiles").status_code for _ in range(11)]
-    assert codes[:10] == [201] * 10 and codes[10] == 429
+    codes = [client.post("/api/profiles").status_code for _ in range(31)]
+    assert codes[:30] == [201] * 30 and codes[30] == 429
 
 
 def test_unknown_api_route_is_json_404(client):
     res = client.get("/api/does-not-exist")
     assert res.status_code == 404
     assert res.json()["error"]["code"] == 404
+
+
+def test_ephemeral_mode_provisions_unknown_keys(client, monkeypatch):
+    import app.security as security
+    from dataclasses import replace
+
+    key = "mhp_" + "a" * 43
+    headers = {"Authorization": f"Bearer {key}"}
+    assert client.get("/api/profile", headers=headers).status_code == 401
+
+    monkeypatch.setattr(security, "settings", replace(security.settings, database_url="sqlite:////tmp/x.db"))
+    first = client.get("/api/profile", headers=headers)
+    assert first.status_code == 200
+    assert client.get("/api/profile", headers=headers).json()["id"] == first.json()["id"]
+    assert client.get("/api/profile", headers={"Authorization": "Bearer mhp_short"}).status_code == 401

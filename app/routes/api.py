@@ -50,7 +50,7 @@ def health() -> dict[str, Any]:
 # --------------------------------------------------------------------------- #
 
 @router.post("/profiles", status_code=status.HTTP_201_CREATED, tags=["profile"],
-             dependencies=[Depends(rate_limit("profile-create", 10, 3600, per="ip"))])
+             dependencies=[Depends(rate_limit("profile-create", 30, 3600, per="ip"))])
 def create_profile() -> dict[str, Any]:
     token = new_token()
     profile = db.create_profile(uuid.uuid4().hex, hash_token(token))

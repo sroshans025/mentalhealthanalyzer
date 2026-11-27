@@ -8,11 +8,14 @@ are scoped to that profile, so one visitor can never read another's journal.
 from __future__ import annotations
 
 import hashlib
+import re
 import secrets
 import threading
 import time
 from collections import defaultdict, deque
 from typing import Any
+
+from sqlalchemy.exc import IntegrityError
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -21,6 +24,7 @@ from app.config import settings
 from app.models import database as db
 
 TOKEN_PREFIX = "mhp_"
+_TOKEN_RE = re.compile(r"^mhp_[A-Za-z0-9_-]{40,64}$")
 _bearer = HTTPBearer(auto_error=False)
 
 
@@ -46,12 +50,26 @@ def current_profile(
     if not token.startswith(TOKEN_PREFIX) or len(token) > 128:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Invalid profile key.",
                             headers={"WWW-Authenticate": "Bearer"})
-    profile = db.get_profile_by_token_hash(hash_token(token))
+    token_hash = hash_token(token)
+    profile = db.get_profile_by_token_hash(token_hash)
+    if profile is None and settings.is_ephemeral_storage and _TOKEN_RE.match(token):
+        # Without a shared database each serverless instance has its own /tmp
+        # copy, so a key issued by another instance is unknown here. Give it an
+        # empty profile rather than a 401 so the app keeps working. Data stays
+        # keyed by the token hash, so isolation between visitors is unchanged.
+        profile = _provision(token_hash)
     if profile is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Profile not found. It may have been deleted.",
                             headers={"WWW-Authenticate": "Bearer"})
     request.state.profile_id = profile["id"]
     return profile
+
+
+def _provision(token_hash: str) -> dict[str, Any] | None:
+    try:
+        return db.create_profile(token_hash[:32], token_hash)
+    except IntegrityError:  # created concurrently by another request
+        return db.get_profile_by_token_hash(token_hash)
 
 
 class RateLimiter:
