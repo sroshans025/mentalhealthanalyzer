@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" role="img" aria-labelledby="t">
+  <title id="t">Two speech bubbles with a heart</title>
+  <ellipse cx="120" cy="164" rx="84" ry="9" fill="#0d8f83" opacity=".12"/>
+  <path d="M40 40h104a16 16 0 0 1 16 16v50a16 16 0 0 1-16 16H82l-24 20v-20H40a16 16 0 0 1-16-16V56a16 16 0 0 1 16-16z" fill="#e3f5f2" stroke="#7ab8b0" stroke-width="2"/>
+  <path d="M110 74h88a14 14 0 0 1 14 14v42a14 14 0 0 1-14 14h-12v18l-22-18h-54a14 14 0 0 1-14-14V88a14 14 0 0 1 14-14z" fill="#0d8f83"/>
+  <path d="M154 126c-14-9-22-16-22-25a10 10 0 0 1 22-5 10 10 0 0 1 22 5c0 9-8 16-22 25z" fill="#ffd9a0"/>
+  <g stroke="#7ab8b0" stroke-width="3" stroke-linecap="round"><path d="M44 64h60"/><path d="M44 80h40"/></g>
+</svg>

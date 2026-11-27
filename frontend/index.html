@@ -2,490 +2,59 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mental Health Predictor</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Outfit', 'sans-serif'] },
-                    colors: {
-                        brandDark: '#050B14',
-                        brandBlue: '#0A192F',
-                        brandCyan: '#64FFDA',
-                        brandNeon: '#00B4DB',
-                        glassBg: 'rgba(10, 25, 47, 0.65)',
-                    },
-                    animation: {
-                        'blob': 'blob 10s infinite',
-                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                    },
-                    keyframes: {
-                        blob: {
-                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
-                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
-                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
-                            '100%': { transform: 'translate(0px, 0px) scale(1)' }
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        body {
-            background-color: #050B14;
-            color: #e6f1ff;
-            overflow-x: hidden;
-        }
-        
-        /* Animated Background Orbs */
-        .bg-orb {
-            position: fixed;
-            border-radius: 50%;
-            filter: blur(100px);
-            z-index: -1;
-            opacity: 0.4;
-        }
-        .orb-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: #00B4DB; animation: blob 15s infinite alternate; }
-        .orb-2 { bottom: -20%; right: -10%; width: 60vw; height: 60vw; background: #09203F; animation: blob 20s infinite alternate-reverse; }
-        .orb-3 { top: 40%; left: 40%; width: 30vw; height: 30vw; background: #64FFDA; opacity: 0.15; animation: blob 12s infinite; }
-
-        /* Glassmorphism Classes */
-        .glass-panel {
-            background: var(--glassBg);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(100, 255, 218, 0.15);
-            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
-            border-radius: 24px;
-        }
-
-        /* Custom Inputs */
-        .custom-input {
-            background: rgba(5, 11, 20, 0.6);
-            border: 1px solid rgba(100, 255, 218, 0.2);
-            color: #fff;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .custom-input:focus {
-            border-color: #64FFDA;
-            background: rgba(5, 11, 20, 0.8);
-            box-shadow: 0 0 15px rgba(100, 255, 218, 0.15);
-            outline: none;
-            transform: translateY(-2px);
-        }
-
-        /* Range Slider Styling */
-        input[type=range] {
-            -webkit-appearance: none;
-            width: 100%;
-            background: transparent;
-        }
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 20px;
-            width: 20px;
-            border-radius: 50%;
-            background: #64FFDA;
-            cursor: pointer;
-            margin-top: -8px;
-            box-shadow: 0 0 10px rgba(100, 255, 218, 0.5);
-            transition: transform 0.1s;
-        }
-        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 6px;
-            cursor: pointer;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 99px;
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-
-        /* Primary Button */
-        .btn-glow {
-            background: linear-gradient(135deg, #00B4DB 0%, #0A192F 100%);
-            border: 1px solid #00B4DB;
-            position: relative;
-            overflow: hidden;
-            transition: all 0.4s ease;
-        }
-        .btn-glow::before {
-            content: '';
-            position: absolute;
-            top: 0; left: -100%;
-            width: 100%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(100, 255, 218, 0.4), transparent);
-            transition: all 0.6s ease;
-        }
-        .btn-glow:hover::before { left: 100%; }
-        .btn-glow:hover {
-            box-shadow: 0 0 20px rgba(0, 180, 219, 0.5);
-            transform: translateY(-3px);
-        }
-
-        /* Scanner Line Animation for Results */
-        @keyframes scan {
-            0% { top: 0; opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { top: 100%; opacity: 0; }
-        }
-        .scanner-line {
-            position: absolute;
-            left: 0; width: 100%; height: 2px;
-            background: #64FFDA;
-            box-shadow: 0 0 10px #64FFDA, 0 0 20px #64FFDA;
-            animation: scan 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-            display: none;
-            z-index: 50;
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Mental Health Predictor · Daily wellbeing check-ins</title>
+    <meta name="description" content="Write a short daily reflection, log sleep, screen time and activity, and see how your wellbeing trends over time. Private by default.">
+    <meta name="theme-color" content="#f4f6f9" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#07111f" media="(prefers-color-scheme: dark)">
+    <meta property="og:title" content="Mental Health Predictor">
+    <meta property="og:description" content="Daily check-ins, mood trends and personal insights from your journal and habits.">
+    <meta property="og:type" content="website">
+    <link rel="icon" href="/static/assets/img/favicon.svg?v=2" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/assets/css/app.css?v=2.0.0">
+    <script src="/static/assets/js/theme-init.js?v=2.0.0"></script>
+    <script src="/static/assets/vendor/chart.umd.min.js?v=4.5.1" defer></script>
+    <script type="module" src="/static/assets/js/app.js?v=2.0.0"></script>
 </head>
-<body class="antialiased selection:bg-brandCyan selection:text-brandDark">
+<body>
+    <a class="skip-link" href="#view">Skip to content</a>
 
-    <!-- Ambient Background -->
-    <div class="bg-orb orb-1"></div>
-    <div class="bg-orb orb-2"></div>
-    <div class="bg-orb orb-3"></div>
-
-    <!-- Navigation Bar -->
-    <nav class="fixed w-full z-50 top-0 transition-all duration-300" style="background: rgba(5, 11, 20, 0.8); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(100,255,218,0.1);">
-        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brandCyan to-brandNeon flex items-center justify-center shadow-[0_0_15px_rgba(100,255,218,0.4)]">
-                    <svg class="w-6 h-6 text-brandDark" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                </div>
-                <span class="text-2xl font-bold tracking-tight text-white">Mental Health <span class="text-transparent bg-clip-text bg-gradient-to-r from-brandCyan to-brandNeon">Predictor</span></span>
+    <div class="shell">
+        <aside class="sidebar" aria-label="Primary">
+            <a class="brand" href="#/dashboard" aria-label="Mental Health Predictor home">
+                <img class="brand-mark" src="/static/assets/img/favicon.svg?v=2" alt="" width="36" height="36">
+                <span class="brand-name">Mental Health<span>Predictor</span></span>
+            </a>
+            <nav class="nav" data-nav></nav>
+            <div class="sidebar-foot">
+                <a class="btn btn-primary sidebar-cta" href="#/check-in" data-icon-before="plus">New check-in</a>
+                <p class="sidebar-note">For self-reflection only. This is not a medical diagnosis. If you are struggling, please reach out to someone you trust or a professional.</p>
             </div>
-            <div class="hidden md:flex items-center gap-6 text-sm font-medium text-gray-400">
-                <a href="#" class="hover:text-brandCyan transition-colors">Dashboard</a>
-                <a href="#" class="hover:text-brandCyan transition-colors">Insights</a>
-                <div class="px-4 py-1.5 rounded-full border border-gray-700 bg-gray-800/50 flex items-center gap-2">
-                    <div class="w-2 h-2 rounded-full bg-brandCyan animate-pulse"></div>
-                    System Online
-                </div>
-            </div>
-        </div>
-    </nav>
+        </aside>
 
-    <main class="max-w-7xl mx-auto pt-32 pb-20 px-6 relative z-10">
-        
-        <!-- Header Section -->
-        <div class="text-center mb-16 max-w-3xl mx-auto">
-            <h1 class="text-5xl md:text-6xl font-extrabold mb-6 leading-tight">
-                Analyze your <br/>
-                <span class="text-transparent bg-clip-text bg-gradient-to-r from-brandCyan via-brandNeon to-blue-500">Neuro-Behavioral State</span>
-            </h1>
-            <p class="text-lg text-gray-400 mb-8 font-light">
-                Our advanced NLP and Machine Learning fusion engine analyzes your daily habits and journal entries to predict mental well-being trends.
-            </p>
-        </div>
+        <header class="topbar">
+            <a class="brand" href="#/dashboard" aria-label="Mental Health Predictor home">
+                <img class="brand-mark" src="/static/assets/img/favicon.svg?v=2" alt="" width="32" height="32">
+                <span class="brand-name">Mental Health<span>Predictor</span></span>
+            </a>
+            <a class="btn btn-primary btn-sm" href="#/check-in" data-icon-before="plus">Check in</a>
+        </header>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
-            
-            <!-- INPUT PANEL -->
-            <div class="lg:col-span-5 glass-panel p-8 relative group">
-                <div class="flex items-center gap-3 mb-8">
-                    <div class="p-2 rounded-lg bg-brandCyan/10 text-brandCyan">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                    </div>
-                    <h2 class="text-2xl font-bold text-white tracking-wide">Daily Input</h2>
-                </div>
+        <main class="main">
+            <div id="view" class="view" tabindex="-1" aria-live="polite"></div>
+        </main>
 
-                <form id="healthForm" class="space-y-8">
-                    <!-- Journal -->
-                    <div class="space-y-3">
-                        <label class="flex items-center gap-2 text-sm font-semibold text-gray-300">
-                            <span>📝</span> Personal Journal
-                        </label>
-                        <textarea id="journal" required rows="4" class="w-full custom-input rounded-xl p-4 text-sm" placeholder="How was your day? What's on your mind?..."></textarea>
-                    </div>
-                    
-                    <!-- Sliders -->
-                    <div class="space-y-6 bg-brandDark/40 p-5 rounded-2xl border border-white/5">
-                        
-                        <!-- Sleep -->
-                        <div>
-                            <div class="flex justify-between text-sm font-medium text-gray-300 mb-3">
-                                <label class="flex items-center gap-2"><span>😴</span> Sleep Duration</label>
-                                <span class="text-brandCyan font-bold" id="sleepVal">7.5 hrs</span>
-                            </div>
-                            <input type="range" id="sleep" min="0" max="14" step="0.5" value="7.5" class="w-full" oninput="document.getElementById('sleepVal').innerText = this.value + ' hrs'">
-                        </div>
+        <nav class="bottom-nav" aria-label="Primary" data-nav-mobile></nav>
+    </div>
 
-                        <!-- Screen Time -->
-                        <div>
-                            <div class="flex justify-between text-sm font-medium text-gray-300 mb-3">
-                                <label class="flex items-center gap-2"><span>📱</span> Screen Time</label>
-                                <span class="text-brandCyan font-bold" id="screenVal">4.0 hrs</span>
-                            </div>
-                            <input type="range" id="screen" min="0" max="18" step="0.5" value="4.0" class="w-full" oninput="document.getElementById('screenVal').innerText = this.value + ' hrs'">
-                        </div>
+    <div class="toasts" role="region" aria-label="Notifications" aria-live="polite"></div>
+    <div id="modal-host"></div>
 
-                        <!-- Activity -->
-                        <div>
-                            <div class="flex justify-between text-sm font-medium text-gray-300 mb-3">
-                                <label class="flex items-center gap-2"><span>🏃</span> Steps/Activity</label>
-                                <span class="text-brandCyan font-bold" id="activityVal">5000</span>
-                            </div>
-                            <input type="range" id="activity" min="0" max="25000" step="500" value="5000" class="w-full" oninput="document.getElementById('activityVal').innerText = this.value">
-                        </div>
-                    </div>
-
-                    <button type="submit" id="analyzeBtn" class="w-full btn-glow text-white font-bold py-4 px-6 rounded-xl text-lg flex justify-center items-center gap-3">
-                        <span>Run Diagnostics</span>
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                    </button>
-                </form>
-            </div>
-
-            <!-- RESULTS & DASHBOARD -->
-            <div class="lg:col-span-7 flex flex-col gap-8 h-full">
-                
-                <!-- PREDICTION RESULT -->
-                <div class="glass-panel p-8 relative overflow-hidden hidden transition-all duration-700" id="resultCard" style="transform: translateY(20px); opacity: 0;">
-                    <div class="scanner-line" id="scannerLine"></div>
-                    
-                    <div class="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
-                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
-                            <span>📊</span> Diagnostic Report
-                        </h2>
-                        <div class="text-xs font-mono px-4 py-1.5 rounded-full bg-brandDark border border-brandCyan/30 text-brandCyan shadow-[0_0_10px_rgba(100,255,218,0.2)]">
-                            CONFIDENCE: <span id="confidence" class="font-bold text-white">--</span>%
-                        </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-5 gap-8 items-center">
-                        
-                        <!-- Risk Badge -->
-                        <div class="md:col-span-2 flex justify-center">
-                            <div id="riskGlow" class="relative flex justify-center items-center w-48 h-48 rounded-full bg-brandDark border-[6px] border-gray-800 shadow-2xl transition-all duration-700">
-                                <div class="absolute inset-2 rounded-full border border-white/5 border-dashed animate-spin-slow"></div>
-                                <div class="text-center z-10">
-                                    <div class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-1">Status</div>
-                                    <div id="riskLevel" class="text-4xl font-extrabold text-white tracking-tighter">--</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Details -->
-                        <div class="md:col-span-3 space-y-4">
-                            <div class="bg-black/30 p-5 rounded-2xl border border-white/5 backdrop-blur-md hover:border-brandCyan/30 transition-colors">
-                                <div class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Detected Emotion</div>
-                                <div id="emotion" class="text-2xl font-bold text-white capitalize flex items-center gap-3">--</div>
-                            </div>
-
-                            <div class="bg-brandNeon/10 p-5 rounded-2xl border border-brandNeon/30 backdrop-blur-md">
-                                <div class="text-xs font-bold text-brandNeon uppercase tracking-widest mb-2 flex items-center gap-2">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                    Behavioral Explainability
-                                </div>
-                                <div id="explanation" class="text-sm text-gray-300 leading-relaxed font-light">--</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- TREND CHART -->
-                <div class="glass-panel p-8 flex-grow flex flex-col min-h-[350px]">
-                    <div class="flex items-center justify-between mb-8">
-                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
-                            <span>📈</span> Risk Timeline
-                        </h2>
-                        <button onclick="loadHistory()" class="group text-gray-400 hover:text-brandCyan transition-colors p-2 rounded-xl hover:bg-white/5 border border-transparent hover:border-brandCyan/20">
-                            <svg class="w-5 h-5 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                        </button>
-                    </div>
-                    <div class="flex-grow w-full relative">
-                        <canvas id="trendChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <script>
-        let chartInstance = null;
-
-        document.getElementById("healthForm").addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById("analyzeBtn");
-            const originalBtnText = btn.innerHTML;
-            btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> <span class="ml-3 tracking-widest uppercase text-sm">Processing...</span>`;
-            btn.disabled = true;
-
-            const payload = {
-                journal: document.getElementById("journal").value,
-                sleep_hours: parseFloat(document.getElementById("sleep").value),
-                screen_time: parseFloat(document.getElementById("screen").value),
-                activity_level: parseInt(document.getElementById("activity").value)
-            };
-
-            try {
-                const res = await fetch("/api/predict", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
-                
-                const data = await res.json();
-
-                const resultCard = document.getElementById("resultCard");
-                resultCard.classList.remove("hidden");
-                
-                // Play scanner animation
-                const scanner = document.getElementById("scannerLine");
-                scanner.style.display = "block";
-                scanner.style.animation = 'none';
-                scanner.offsetHeight; // trigger reflow
-                scanner.style.animation = null; 
-                
-                setTimeout(() => {
-                    resultCard.style.transform = "translateY(0)";
-                    resultCard.style.opacity = "1";
-                    
-                    const riskEl = document.getElementById("riskLevel");
-                    riskEl.innerText = data.risk_level;
-                    
-                    const riskGlow = document.getElementById("riskGlow");
-                    
-                    if(data.risk_level === "Low") {
-                        riskGlow.style.borderColor = "#10b981";
-                        riskGlow.style.boxShadow = "0 0 50px rgba(16, 185, 129, 0.3), inset 0 0 30px rgba(16, 185, 129, 0.2)";
-                    }
-                    else if(data.risk_level === "Medium") {
-                        riskGlow.style.borderColor = "#f59e0b";
-                        riskGlow.style.boxShadow = "0 0 50px rgba(245, 158, 11, 0.3), inset 0 0 30px rgba(245, 158, 11, 0.2)";
-                    }
-                    else {
-                        riskGlow.style.borderColor = "#ef4444";
-                        riskGlow.style.boxShadow = "0 0 50px rgba(239, 68, 68, 0.4), inset 0 0 30px rgba(239, 68, 68, 0.3)";
-                    }
-
-                    document.getElementById("confidence").innerText = data.confidence;
-                    
-                    const emoji = {
-                        'joy': '✨', 'neutral': '😶', 'sadness': '🌧️', 'fear': '😰', 'anger': '🔥'
-                    }[data.emotion] || '🧠';
-                    
-                    document.getElementById("emotion").innerHTML = `<span>${emoji}</span> ${data.emotion} <span class="text-xs font-normal text-brandCyan border border-brandCyan/20 bg-brandCyan/10 px-2 py-1 rounded-full ml-auto">Score: ${data.sentiment_score}</span>`;
-                    document.getElementById("explanation").innerText = data.explanation;
-
-                    loadHistory();
-                }, 400); // slight delay for dramatic effect
-
-            } catch(err) {
-                alert("Error connecting to backend.");
-            } finally {
-                setTimeout(() => {
-                    btn.innerHTML = originalBtnText;
-                    btn.disabled = false;
-                }, 1000);
-            }
-        });
-
-        async function loadHistory() {
-            try {
-                const res = await fetch("/api/history");
-                const data = await res.json();
-                
-                const history = data.history.reverse();
-                
-                const labels = history.map(h => {
-                    const d = new Date(h.timestamp);
-                    return `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
-                });
-                
-                const scores = history.map(h => h.risk_level === "High" ? 3 : h.risk_level === "Medium" ? 2 : 1);
-
-                if(chartInstance) chartInstance.destroy();
-                
-                const ctx = document.getElementById('trendChart').getContext('2d');
-                
-                const gradient = ctx.createLinearGradient(0, 0, 0, 350);
-                gradient.addColorStop(0, 'rgba(0, 180, 219, 0.6)');
-                gradient.addColorStop(1, 'rgba(0, 180, 219, 0.0)');
-
-                Chart.defaults.font.family = 'Outfit';
-                
-                chartInstance = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Risk Level',
-                            data: scores,
-                            borderColor: '#00B4DB',
-                            backgroundColor: gradient,
-                            fill: true,
-                            tension: 0.5,
-                            borderWidth: 3,
-                            pointBackgroundColor: '#050B14',
-                            pointBorderColor: '#64FFDA',
-                            pointBorderWidth: 2,
-                            pointRadius: 5,
-                            pointHoverRadius: 8,
-                            pointHoverBackgroundColor: '#64FFDA'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                backgroundColor: 'rgba(5, 11, 20, 0.9)',
-                                titleColor: '#64FFDA',
-                                bodyColor: '#fff',
-                                borderColor: 'rgba(100,255,218,0.3)',
-                                borderWidth: 1,
-                                padding: 12,
-                                displayColors: false,
-                                callbacks: {
-                                    label: function(context) {
-                                        let val = context.raw;
-                                        return val === 3 ? 'High Risk' : val === 2 ? 'Medium Risk' : 'Low Risk';
-                                    }
-                                }
-                            }
-                        },
-                        scales: {
-                            y: { 
-                                min: 0.5, 
-                                max: 3.5, 
-                                ticks: { 
-                                    stepSize: 1,
-                                    callback: function(value) {
-                                        if(value === 1) return 'Low';
-                                        if(value === 2) return 'Med';
-                                        if(value === 3) return 'High';
-                                        return '';
-                                    },
-                                    color: '#64748b',
-                                    font: { weight: '600' }
-                                },
-                                border: { display: false },
-                                grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false }
-                            },
-                            x: {
-                                ticks: { color: '#64748b', maxTicksLimit: 6 },
-                                border: { display: false },
-                                grid: { display: false }
-                            }
-                        }
-                    }
-                });
-            } catch (err) {
-                console.log("History empty or error fetching.");
-            }
-        }
-        
-        loadHistory();
-    </script>
+    <noscript>
+        <p style="padding:24px;font-family:sans-serif">This app needs JavaScript enabled to run.</p>
+    </noscript>
 </body>
 </html>

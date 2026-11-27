@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" role="img" aria-labelledby="t">
+  <title id="t">A cloud with a broken connection</title>
+  <ellipse cx="120" cy="162" rx="80" ry="9" fill="#0d8f83" opacity=".12"/>
+  <path d="M70 120a30 30 0 0 1 2-60 42 42 0 0 1 80-6 32 32 0 0 1 18 66z" fill="#e3f5f2" stroke="#7ab8b0" stroke-width="2"/>
+  <g stroke="#0d8f83" stroke-width="5" stroke-linecap="round" fill="none">
+    <path d="M98 100a18 18 0 0 1 14-28"/><path d="M142 100a18 18 0 0 0-14-28"/>
+  </g>
+  <path d="M120 132v10M110 136l-4 7M130 136l4 7" stroke="#f4c48a" stroke-width="4" stroke-linecap="round"/>
+</svg>

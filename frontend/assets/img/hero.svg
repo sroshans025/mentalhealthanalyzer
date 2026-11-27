@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" role="img" aria-labelledby="t">
+  <title id="t">Calm hills at sunrise</title>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#cfeee9"/>
+      <stop offset=".55" stop-color="#f3efe4"/>
+      <stop offset="1" stop-color="#fbe3c8"/>
+    </linearGradient>
+    <radialGradient id="sun" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#ffd9a0"/>
+      <stop offset=".6" stop-color="#ffc98a"/>
+      <stop offset="1" stop-color="#ffc98a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="h1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fd8cf"/><stop offset="1" stop-color="#7cc6bb"/></linearGradient>
+    <linearGradient id="h2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3fa79a"/><stop offset="1" stop-color="#2b8f83"/></linearGradient>
+    <linearGradient id="h3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#14665f"/><stop offset="1" stop-color="#0d4d48"/></linearGradient>
+    <linearGradient id="h4" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0f2f45"/><stop offset="1" stop-color="#0a192f"/></linearGradient>
+  </defs>
+  <rect width="640" height="400" fill="url(#sky)"/>
+  <circle cx="420" cy="200" r="120" fill="url(#sun)" opacity=".9"/>
+  <circle cx="420" cy="200" r="46" fill="#ffcf8f"/>
+  <g fill="#ffffff" opacity=".75">
+    <rect x="70" y="86" width="120" height="14" rx="7"/><rect x="100" y="72" width="70" height="14" rx="7"/>
+    <rect x="470" y="70" width="100" height="12" rx="6"/><rect x="495" y="58" width="56" height="12" rx="6"/>
+  </g>
+  <g fill="none" stroke="#2b5d6b" stroke-width="2.4" stroke-linecap="round" opacity=".55">
+    <path d="M232 128q7-7 14 0q7-7 14 0"/><path d="M270 110q5-5 10 0q5-5 10 0"/><path d="M300 136q4-4 8 0q4-4 8 0"/>
+  </g>
+  <path d="M0 250 C90 200 170 205 250 232 S420 270 520 222 S610 196 640 206 V400 H0Z" fill="url(#h1)"/>
+  <path d="M0 290 C80 255 180 250 270 275 S430 312 520 280 S600 258 640 262 V400 H0Z" fill="url(#h2)"/>
+  <path d="M0 330 C110 300 200 300 300 322 S470 350 560 322 S620 306 640 308 V400 H0Z" fill="url(#h3)"/>
+  <path d="M260 400 C300 360 330 340 360 322 C376 312 392 306 406 302 C384 318 360 344 342 400Z" fill="#f6e6cc" opacity=".9"/>
+  <path d="M0 372 C120 352 230 356 340 372 S540 388 640 368 V400 H0Z" fill="url(#h4)"/>
+  <g fill="#0a192f">
+    <path d="M118 312 l14 -46 14 46z"/><rect x="130" y="310" width="4" height="12"/>
+    <path d="M146 318 l11 -36 11 36z"/><rect x="155" y="316" width="3.5" height="10"/>
+    <path d="M520 300 l13 -42 13 42z"/><rect x="531" y="298" width="4" height="12"/>
+  </g>
+</svg>

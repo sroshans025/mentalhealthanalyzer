@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" role="img" aria-labelledby="t">
+  <title id="t">An open journal and pen</title>
+  <ellipse cx="120" cy="160" rx="92" ry="10" fill="#0d8f83" opacity=".12"/>
+  <path d="M28 46c30-10 62-10 92 4v104c-30-14-62-14-92-4z" fill="#e3f5f2" stroke="#7ab8b0" stroke-width="2"/>
+  <path d="M212 46c-30-10-62-10-92 4v104c30-14 62-14 92-4z" fill="#ffffff" stroke="#7ab8b0" stroke-width="2"/>
+  <g stroke="#9cc9c2" stroke-width="3" stroke-linecap="round">
+    <path d="M44 70c20-5 40-5 60 2"/><path d="M44 88c20-5 40-5 60 2"/><path d="M44 106c20-5 40-5 44 0"/>
+    <path d="M136 72c20-7 40-7 60-2"/><path d="M136 90c14-5 28-6 40-4"/>
+  </g>
+  <g transform="rotate(-35 186 104)">
+    <rect x="150" y="98" width="70" height="12" rx="3" fill="#0a192f"/>
+    <rect x="150" y="98" width="14" height="12" rx="2" fill="#4fd8c4"/>
+    <path d="M220 98l14 6-14 6z" fill="#f4c48a"/>
+  </g>
+  <circle cx="196" cy="30" r="5" fill="#f4c48a"/><circle cx="40" cy="26" r="3" fill="#4fd8c4"/><circle cx="214" cy="56" r="2.5" fill="#0d8f83"/>
+</svg>

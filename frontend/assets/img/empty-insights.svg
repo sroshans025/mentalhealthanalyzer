@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" role="img" aria-labelledby="t">
+  <title id="t">A seedling growing</title>
+  <ellipse cx="120" cy="164" rx="80" ry="9" fill="#0d8f83" opacity=".12"/>
+  <path d="M86 116h68l-8 44h-52z" fill="#f4c48a"/>
+  <rect x="80" y="108" width="80" height="14" rx="4" fill="#e7b273"/>
+  <path d="M120 108V70" stroke="#2b8f83" stroke-width="4" stroke-linecap="round"/>
+  <path d="M120 84c-6-22-26-30-44-26 2 20 20 32 44 26z" fill="#4fd8c4"/>
+  <path d="M120 74c4-24 24-36 46-32-2 22-22 36-46 32z" fill="#0d8f83"/>
+  <path d="M120 84c-10-10-22-16-36-20" stroke="#2b8f83" stroke-width="1.6" fill="none" opacity=".6"/>
+  <path d="M121 74c10-12 24-22 38-27" stroke="#e3f5f2" stroke-width="1.6" fill="none" opacity=".7"/>
+  <g fill="#f4c48a"><path d="M180 40l3 8 8 3-8 3-3 8-3-8-8-3 8-3z"/><path d="M58 36l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/></g>
+  <circle cx="196" cy="88" r="4" fill="#4fd8c4"/><circle cx="44" cy="92" r="3" fill="#0d8f83" opacity=".6"/>
+</svg>
