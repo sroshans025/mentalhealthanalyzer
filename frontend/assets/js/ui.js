@@ -112,7 +112,7 @@ export function setBusy(btn, busy, busyLabel = "Working…") {
 /** Image with lazy loading and a graceful fallback if it fails to load. */
 export function illustration(name, alt, cls = "", { eager = false, width = 240, height = 180 } = {}) {
   const img = h("img", {
-    src: `/static/assets/img/${name}.svg?v=2`, alt, class: cls, width, height,
+    src: `/static/assets/img/${name}.svg`, alt, class: cls, width, height,
     loading: eager ? "eager" : "lazy", decoding: "async",
   });
   img.addEventListener("error", () => {

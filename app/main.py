@@ -1,3 +1,4 @@
+import hashlib
 import logging
 import time
 from contextlib import asynccontextmanager
@@ -6,7 +7,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -81,7 +82,8 @@ async def security_and_logging(request: Request, call_next):
         response.headers.setdefault("Cache-Control", "no-store")
     elif path.startswith("/static/"):
         # Asset URLs carry a version query string, so they can be cached hard.
-        cache = "public, max-age=31536000, immutable" if request.url.query else "public, max-age=3600"
+        # Unversioned files (ES module imports, images) revalidate via ETag.
+        cache = "public, max-age=31536000, immutable" if request.url.query.startswith("v=") else "no-cache"
         response.headers.setdefault("Cache-Control", cache)
     # Never log query strings or bodies: they can contain journal text.
     logger.info("%s %s %s %.0fms", request.method, path, response.status_code,
@@ -131,9 +133,23 @@ def favicon():
     return FileResponse(FRONTEND_DIR / "assets" / "img" / "favicon.svg", media_type="image/svg+xml")
 
 
+def _asset_version() -> str:
+    """Content hash of the frontend assets, so every deploy busts browser caches."""
+    digest = hashlib.sha256()
+    for path in sorted((FRONTEND_DIR / "assets").rglob("*")):
+        if path.is_file():
+            digest.update(path.relative_to(FRONTEND_DIR).as_posix().encode())
+            digest.update(path.read_bytes())
+    return digest.hexdigest()[:12]
+
+
+ASSET_VERSION = _asset_version()
+INDEX_HTML = (FRONTEND_DIR / "index.html").read_text(encoding="utf-8").replace("__V__", ASSET_VERSION)
+
+
 @app.get("/", include_in_schema=False)
 def serve_index():
-    return FileResponse(FRONTEND_DIR / "index.html", headers={"Cache-Control": "no-cache"})
+    return HTMLResponse(INDEX_HTML, headers={"Cache-Control": "no-cache"})
 
 
 @app.api_route("/api/{rest:path}", methods=["GET", "POST", "PATCH", "DELETE", "PUT"], include_in_schema=False)

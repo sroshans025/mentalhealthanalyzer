@@ -11,7 +11,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from textblob import TextBlob
 
 EMOTIONS = ("joy", "neutral", "sadness", "fear", "anger")
 
@@ -104,6 +103,8 @@ def detect_crisis(text: str) -> bool:
 def analyze(text: str) -> TextAnalysis:
     lowered = text.lower()
     tokens = _tokens(lowered)
+    from textblob import TextBlob  # deferred: heavy import, only needed for analysis
+
     polarity = float(TextBlob(text).sentiment.polarity)
 
     scores = _emotion_scores(tokens, lowered)

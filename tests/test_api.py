@@ -12,6 +12,7 @@ def test_index_and_security_headers(client):
     res = client.get("/")
     assert res.status_code == 200
     assert "Mental Health Predictor" in res.text
+    assert "__V__" not in res.text and "app.js?v=" in res.text
     assert "script-src 'self'" in res.headers["content-security-policy"]
     assert res.headers["x-content-type-options"] == "nosniff"
     assert res.headers["x-frame-options"] == "DENY"

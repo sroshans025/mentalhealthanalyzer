@@ -18,7 +18,6 @@ import threading
 from dataclasses import dataclass, field
 
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +96,9 @@ _SUGGESTIONS = {
 
 class MentalHealthPredictor:
     def __init__(self, n_samples: int = 3000, seed: int = 42):
+        # Imported here so requests that never predict don't pay for it on cold start.
+        from sklearn.ensemble import RandomForestClassifier
+
         X, y = build_training_set(n_samples, seed)
         self.model = RandomForestClassifier(
             n_estimators=120, max_depth=10, min_samples_leaf=3, random_state=seed, n_jobs=1
