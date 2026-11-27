@@ -54,7 +54,7 @@ export async function request(path, { method = "GET", body, query, auth = true, 
     clearTimeout(timer);
   }
 
-  if (res.status === 401 && auth && !token) listeners.forEach((fn) => fn());
+  if (res.status === 401 && auth && !token && key) listeners.forEach((fn) => fn(key));
   if (!res.ok) {
     let message = `Request failed (${res.status}).`;
     let details;
@@ -74,6 +74,9 @@ export async function request(path, { method = "GET", body, query, auth = true, 
 export const api = {
   health: () => request("/health", { auth: false }),
   createProfile: () => request("/profiles", { method: "POST", auth: false }),
+  register: (body) => request("/auth/register", { method: "POST", body }),
+  login: (body) => request("/auth/login", { method: "POST", body, auth: false }),
+  logout: () => request("/auth/logout", { method: "POST" }),
   profile: (token) => request("/profile", { token }),
   updateProfile: (changes) => request("/profile", { method: "PATCH", body: changes }),
   deleteProfile: () => request("/profile", { method: "DELETE" }),

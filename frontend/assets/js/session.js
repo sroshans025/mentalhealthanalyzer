@@ -24,26 +24,26 @@ export const session = {
     subscribers.forEach((fn) => fn(profile));
   },
 
-  /** Load the stored profile or create a new private one. */
+  get isGuest() { return !!state.profile && !state.profile.has_account; },
+  get signedIn() { return !!state.profile; },
+
+  /** Load the stored profile. Resolves to null when nobody is signed in. */
   async ensure() {
     if (state.profile) return state.profile;
     if (state.ready) return state.ready;
     state.ready = (async () => {
       const token = tokenStore.get();
-      if (token) {
-        try {
-          const profile = await api.profile(token);
-          this.setProfile(profile);
-          return profile;
-        } catch (err) {
-          // Only discard the key if the server says it is unknown.
-          if (!(err instanceof ApiError) || err.status !== 401) throw err;
-        }
+      if (!token) return null;
+      try {
+        const profile = await api.profile(token);
+        this.setProfile(profile);
+        return profile;
+      } catch (err) {
+        // Only forget the key if the server says it is no longer valid.
+        if (!(err instanceof ApiError) || err.status !== 401) throw err;
+        tokenStore.clear();
+        return null;
       }
-      const { profile, token: fresh } = await api.createProfile();
-      tokenStore.set(fresh);
-      this.setProfile(profile);
-      return profile;
     })();
     try {
       return await state.ready;
@@ -60,17 +60,44 @@ export const session = {
     return profile;
   },
 
-  async reset() {
-    tokenStore.clear();
-    state.profile = null;
-    return this.ensure();
+  /** Start a private guest journal (no email needed). */
+  async startGuest() {
+    const { profile, token } = await api.createProfile();
+    tokenStore.set(token);
+    this.setProfile(profile);
+    return profile;
   },
 
-  /** The stored key was rejected mid-session; start a fresh profile. */
-  async recover() {
+  async signIn(email, password) {
+    const { profile, token } = await api.login({ email, password });
+    tokenStore.set(token);
+    this.setProfile(profile);
+    return profile;
+  },
+
+  /** Create an account. A signed-in guest keeps their journal. */
+  async register(email, password, displayName) {
+    const body = { email, password };
+    if (displayName) body.display_name = displayName;
+    const result = await api.register(body);
+    tokenStore.set(result.token);
+    this.setProfile(result.profile);
+    return result;
+  },
+
+  /** Sign out of this device. */
+  async signOut() {
+    if (state.profile?.has_account) {
+      try { await api.logout(); } catch { /* the local sign-out still happens */ }
+    }
+    this.forget();
+  },
+
+  /** Drop the local session without contacting the server. */
+  forget() {
     tokenStore.clear();
-    state.profile = null;
-    return this.ensure();
+    try { localStorage.removeItem("mhp.draft"); } catch { /* ignore */ }
+    this.setProfile(null);
   },
 };
 

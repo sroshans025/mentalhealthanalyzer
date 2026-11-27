@@ -1,4 +1,4 @@
-import { h, icon, toast, clear, errorState } from "./ui.js";
+import { h, icon, iconEl, toast, clear, errorState, dropdown } from "./ui.js";
 import { session, theme } from "./session.js";
 import { onUnauthorized } from "./api.js";
 import * as dashboard from "./views/dashboard.js";
@@ -6,6 +6,8 @@ import * as checkin from "./views/checkin.js";
 import * as journal from "./views/journal.js";
 import * as insights from "./views/insights.js";
 import * as settings from "./views/settings.js";
+import * as auth from "./views/auth.js";
+import { confirmAndSignOut } from "./views/account.js";
 
 const ROUTES = [
   { path: "dashboard", label: "Dashboard", short: "Home", icon: "home", view: dashboard, title: "Dashboard" },
@@ -51,14 +53,34 @@ function highlight(path) {
   });
 }
 
+const AUTH_ROUTE = { path: "sign-in", view: auth, title: "Sign in" };
+
 async function render() {
   const { path, params } = parseHash();
-  const route = ROUTES.find((r) => r.path === path);
+  const route = path === AUTH_ROUTE.path ? AUTH_ROUTE : ROUTES.find((r) => r.path === path);
   if (!route) { location.replace("#/dashboard"); return; }
 
   const id = ++renderId;
   if (typeof cleanup === "function") { try { cleanup(); } catch { /* ignore */ } }
   cleanup = null;
+
+  let profile;
+  try {
+    [profile] = await Promise.all([session.ensure(), session.loadStorageMode()]);
+  } catch (err) {
+    if (id !== renderId) return;
+    document.body.classList.remove("auth-mode");
+    clear(viewEl).append(errorState(err.message, () => render()));
+    return;
+  }
+  if (id !== renderId) return;
+
+  // Nobody signed in: everything except the sign-in page redirects there.
+  if (!profile && route !== AUTH_ROUTE) { location.replace("#/sign-in"); return; }
+  // Accounts never need the sign-in page; guests may visit it to upgrade.
+  if (profile && route === AUTH_ROUTE && !session.isGuest) { location.replace("#/dashboard"); return; }
+
+  document.body.classList.toggle("auth-mode", route === AUTH_ROUTE);
   highlight(route.path);
   document.title = `${route.title} · Mental Health Predictor`;
   clear(viewEl);
@@ -67,14 +89,6 @@ async function render() {
   viewEl.classList.add("view-enter");
   window.scrollTo({ top: 0 });
 
-  try {
-    await Promise.all([session.ensure(), session.loadStorageMode()]);
-  } catch (err) {
-    if (id !== renderId) return;
-    viewEl.append(errorState(err.message, () => render()));
-    return;
-  }
-  if (id !== renderId) return;
   const result = route.view.render(viewEl, { params, navigate, isCurrent: () => id === renderId });
   cleanup = result instanceof Promise ? null : result;
   if (result instanceof Promise) result.then((fn) => { if (id === renderId) cleanup = fn; else if (typeof fn === "function") fn(); });
@@ -83,27 +97,73 @@ async function render() {
   if (document.activeElement && document.activeElement.closest(".nav, .bottom-nav")) viewEl.focus({ preventScroll: true });
 }
 
-let recovering = false;
-let lastRecovery = 0;
-onUnauthorized(async () => {
-  // Recover at most once a minute so a misbehaving server can't cause a loop.
-  if (recovering || Date.now() - lastRecovery < 60_000) return;
-  recovering = true;
-  lastRecovery = Date.now();
-  try {
-    await session.recover();
-    toast("Started a fresh private profile", {
-      type: "warn",
-      message: session.storage === "ephemeral"
-        ? "This server doesn't keep data permanently and was restarted, so earlier entries are no longer available."
-        : "Your previous profile key is no longer recognised by the server.",
-      timeout: 8000,
-    });
-    render();
-  } finally {
-    recovering = false;
-  }
+// The server rejected the stored key mid-session: send the user to sign in.
+let handlingUnauthorized = false;
+onUnauthorized((key) => {
+  if (handlingUnauthorized || !session.signedIn) return;
+  handlingUnauthorized = true;
+  const wasAccount = key.startsWith("mhs_");
+  session.forget();
+  toast(wasAccount ? "Please sign in again" : "Your guest journal is no longer available", {
+    type: "warn",
+    message: wasAccount
+      ? "Your session has ended."
+      : session.storage === "ephemeral"
+        ? "This server doesn't keep data permanently and was restarted."
+        : "Start a new journal or sign in to an account.",
+    timeout: 8000,
+  });
+  navigate("sign-in");
+  setTimeout(() => { handlingUnauthorized = false; }, 1000);
 });
+
+// ------------------------------------------------------------- user menu
+
+const signOut = () => confirmAndSignOut(navigate);
+
+function initials(p) {
+  const source = (p.display_name || p.email || "G").trim();
+  const parts = source.split(/[\s@._-]+/).filter(Boolean);
+  return ((parts[0]?.[0] || "G") + (p.display_name && parts[1] ? parts[1][0] : "")).toUpperCase();
+}
+
+function renderUserUi(p) {
+  const chipHost = document.querySelector("[data-user-chip]");
+  const topHost = document.querySelector("[data-user-menu]");
+  clear(chipHost); clear(topHost);
+  if (!p) return;
+  const guest = !p.has_account;
+  const name = p.display_name || (guest ? "Guest" : p.email.split("@")[0]);
+  const sub = guest ? "Guest journal" : p.email;
+
+  const items = [
+    ...(guest ? [{ label: "Create an account", icon: "cloud", onSelect: () => navigate("sign-in", { mode: "register" }) }] : []),
+    { label: "Settings", icon: "settings", onSelect: () => navigate("settings") },
+    { label: guest ? "Leave guest journal" : "Sign out", icon: "logOut", onSelect: signOut },
+  ];
+
+  const chipBtn = h("button", { type: "button", class: "btn btn-ghost icon-btn", "aria-label": "Account menu", html: icon("chevronDown") });
+  const menu = dropdown(chipBtn, items);
+  chipHost.append(h("div", { class: "user-chip" },
+    h("span", { class: "avatar", "aria-hidden": "true" }, initials(p)),
+    h("div", { class: "who" }, h("strong", {}, name), h("span", {}, sub)),
+    menu));
+  // Open the sidebar menu upwards, since the chip sits at the bottom of the screen.
+  chipBtn.addEventListener("click", () => requestAnimationFrame(() => {
+    const m = chipHost.querySelector(".menu");
+    if (m) { m.style.top = "auto"; m.style.bottom = "calc(100% + 6px)"; }
+  }));
+  if (guest) {
+    chipHost.prepend(h("a", { class: "btn btn-sm btn-block", href: "#/sign-in?mode=register", style: { marginBottom: "8px" } },
+      iconEl("cloud"), h("span", {}, "Save with an account")));
+  }
+
+  const avatarBtn = h("button", { type: "button", class: "avatar-btn", "aria-label": `Account menu for ${name}` },
+    h("span", { class: "avatar" }, initials(p)));
+  topHost.append(dropdown(avatarBtn, items));
+}
+
+session.subscribe(renderUserUi);
 
 document.addEventListener("themechange", () => {
   const { path } = parseHash();

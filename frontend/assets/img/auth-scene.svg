@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" preserveAspectRatio="xMidYMax slice" role="img" aria-labelledby="t">
+  <title id="t">Hills at dusk with the sun rising</title>
+  <defs>
+    <radialGradient id="glow" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#ffcf8f" stop-opacity=".55"/>
+      <stop offset=".45" stop-color="#ffb877" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#ffb877" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2f8f86"/><stop offset="1" stop-color="#1f6f69"/></linearGradient>
+    <linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b5f5b"/><stop offset="1" stop-color="#134a49"/></linearGradient>
+    <linearGradient id="c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#103a44"/><stop offset="1" stop-color="#0c2c3b"/></linearGradient>
+    <linearGradient id="d" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b2236"/><stop offset="1" stop-color="#081a2c"/></linearGradient>
+  </defs>
+  <circle cx="820" cy="215" r="230" fill="url(#glow)"/>
+  <circle cx="820" cy="215" r="58" fill="#ffd29a"/>
+  <circle cx="820" cy="215" r="58" fill="#ffe2b8" opacity=".35"/>
+  <g fill="#e8eef7" opacity=".55">
+    <circle cx="150" cy="40" r="1.6"/><circle cx="320" cy="90" r="1.2"/><circle cx="470" cy="30" r="1.4"/>
+    <circle cx="1040" cy="60" r="1.5"/><circle cx="1120" cy="120" r="1.1"/><circle cx="640" cy="70" r="1"/>
+  </g>
+  <path d="M0 215 C150 160 300 165 430 195 S690 250 830 205 S1060 150 1200 170 V420 H0Z" fill="url(#a)"/>
+  <path d="M0 265 C140 230 290 222 430 248 S700 292 860 262 S1080 228 1200 236 V420 H0Z" fill="url(#b)"/>
+  <path d="M520 420 C560 372 600 340 650 314 C676 300 702 292 724 288 C694 306 662 336 636 420Z" fill="#f2dfc0" opacity=".85"/>
+  <path d="M0 318 C170 288 320 290 470 312 S780 342 930 318 S1120 296 1200 300 V420 H0Z" fill="url(#c)"/>
+  <g fill="#081a2c">
+    <path d="M170 312 l20 -64 20 64z"/><rect x="187" y="309" width="6" height="16"/>
+    <path d="M212 318 l15 -48 15 48z"/><rect x="224" y="315" width="5" height="13"/>
+    <path d="M1010 300 l18 -58 18 58z"/><rect x="1025" y="297" width="6" height="15"/>
+  </g>
+  <path d="M0 360 C200 340 400 344 600 358 S1000 372 1200 352 V420 H0Z" fill="url(#d)"/>
+</svg>

@@ -10,14 +10,18 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from sqlalchemy.exc import IntegrityError
 from fastapi.responses import StreamingResponse
 
 from app.config import APP_VERSION, settings
 from app.models import database as db
 from app.models.ml_model import get_predictor
-from app.schemas import AnalyzeRequest, EntryCreate, ProfileUpdate
-from app.security import current_profile, hash_token, new_token, rate_limit
+from app.schemas import AnalyzeRequest, EntryCreate, LoginRequest, ProfileUpdate, RegisterRequest
+from app.security import (
+    SESSION_PREFIX, current_profile, hash_password, hash_token, new_session_token, new_token,
+    optional_profile, rate_limit, verify_password,
+)
 from app.services.insights import compute_insights, compute_stats, iso_utc
 from app.utils.nlp import EMOTIONS, analyze
 
@@ -76,6 +80,60 @@ def patch_profile(body: ProfileUpdate, profile: Profile = Depends(current_profil
 def remove_profile(profile: Profile = Depends(current_profile)) -> Response:
     db.delete_profile(profile["id"])
     logger.info("Profile deleted %s", profile["id"][:8])
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# --------------------------------------------------------------------------- #
+# Accounts
+# --------------------------------------------------------------------------- #
+
+def _start_session(profile_id: str) -> str:
+    token = new_session_token()
+    db.create_session(uuid.uuid4().hex, profile_id, hash_token(token))
+    return token
+
+
+@router.post("/auth/register", status_code=status.HTTP_201_CREATED, tags=["auth"],
+             dependencies=[Depends(rate_limit("register", 20, 3600, per="ip"))])
+def register(body: RegisterRequest, guest: Optional[Profile] = Depends(optional_profile)) -> dict[str, Any]:
+    """Create an account. Called by a signed-in guest, it keeps the guest's journal."""
+    if db.email_taken(body.email):
+        raise HTTPException(status.HTTP_409_CONFLICT, "An account with this email already exists. Try signing in.")
+    if guest is not None and guest.get("has_account"):
+        raise HTTPException(status.HTTP_409_CONFLICT, "You're already signed in to an account.")
+
+    upgraded = guest is not None
+    profile_id = guest["id"] if upgraded else uuid.uuid4().hex
+    if not upgraded:
+        # Accounts still get an internal key; it is never shown to the user.
+        db.create_profile(profile_id, hash_token(new_token()))
+    try:
+        profile = db.set_credentials(profile_id, body.email, hash_password(body.password), body.display_name)
+    except IntegrityError:  # same email registered concurrently
+        raise HTTPException(status.HTTP_409_CONFLICT, "An account with this email already exists. Try signing in.")
+    logger.info("Account created %s (upgraded guest: %s)", profile_id[:8], upgraded)
+    return {"profile": profile, "token": _start_session(profile_id), "upgraded": upgraded}
+
+
+@router.post("/auth/login", tags=["auth"],
+             dependencies=[Depends(rate_limit("login", 10, 300, per="ip"))])
+def login(body: LoginRequest) -> dict[str, Any]:
+    creds = db.get_credentials(body.email)
+    if not verify_password(body.password, creds[1] if creds else None) or creds is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Incorrect email or password.")
+    token = _start_session(creds[0])
+    profile = db.update_profile(creds[0], {})
+    db.touch_profile(creds[0])
+    logger.info("Sign-in %s", creds[0][:8])
+    return {"profile": profile, "token": token}
+
+
+@router.post("/auth/logout", status_code=status.HTTP_204_NO_CONTENT, tags=["auth"])
+def logout(request: Request, _: Profile = Depends(current_profile)) -> Response:
+    """Ends this device's session. Guest keys are only forgotten client-side."""
+    auth = request.headers.get("authorization", "")
+    if auth.lower().startswith("bearer ") and auth[7:].strip().startswith(SESSION_PREFIX):
+        db.delete_session(request.state.token_hash)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

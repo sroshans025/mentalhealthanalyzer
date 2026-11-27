@@ -71,3 +71,53 @@ class ProfileUpdate(_Strict):
     @classmethod
     def _name(cls, v: Optional[str]) -> Optional[str]:
         return clean_text(v) if v is not None else v
+
+
+EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[^@\s]+\.[^@\s]{2,}$")
+
+
+def _clean_email(value: str) -> str:
+    value = value.strip().lower()
+    if len(value) > 254 or not EMAIL_RE.match(value):
+        raise ValueError("Enter a valid email address.")
+    return value
+
+
+class _Credentials(BaseModel):
+    # No whitespace stripping: spaces are a legitimate part of a password.
+    model_config = ConfigDict(extra="forbid")
+
+
+class LoginRequest(_Credentials):
+    email: str = Field(..., max_length=254)
+    password: str = Field(..., min_length=1, max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def _email(cls, v: str) -> str:
+        return _clean_email(v)
+
+
+class RegisterRequest(_Credentials):
+    email: str = Field(..., max_length=254)
+    password: str = Field(..., max_length=128)
+    display_name: Optional[str] = Field(None, max_length=40)
+
+    @field_validator("email")
+    @classmethod
+    def _email(cls, v: str) -> str:
+        return _clean_email(v)
+
+    @field_validator("password")
+    @classmethod
+    def _password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Use at least 8 characters for your password.")
+        if not re.search(r"[A-Za-z]", v) or not re.search(r"\d", v):
+            raise ValueError("Use at least one letter and one number in your password.")
+        return v
+
+    @field_validator("display_name")
+    @classmethod
+    def _name(cls, v: Optional[str]) -> Optional[str]:
+        return clean_text(v) if v is not None else v

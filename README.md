@@ -14,6 +14,11 @@ Live: https://mentalhealthanalyzer-pink.vercel.app
 
 ## Features
 
+**Sign in**
+- Email and password accounts (scrypt-hashed passwords, per-device sessions) to open your journal anywhere
+- Continue as a guest with no email; a guest can create an account later and keep every entry
+- Restore a guest journal on another device with its recovery key
+
 **Daily check-in**
 - Journal reflection with a live tone preview while you type
 - Sleep, screen time and step inputs (slider or exact number) with hints against your personal goals
@@ -44,9 +49,8 @@ Live: https://mentalhealthanalyzer-pink.vercel.app
 **Settings and privacy**
 - Display name and personal goals (sleep, screen limit, steps)
 - Light, dark or system theme
-- Private profile with no passwords: each browser gets a random recovery key; only its SHA-256 hash is stored on the server
-- Restore a journal on another device with the recovery key
-- Delete all data permanently
+- Account details and sign-out; guests see their recovery key (only SHA-256 hashes of keys and session tokens are stored)
+- Delete the account and all data permanently
 
 ---
 
@@ -80,12 +84,15 @@ There is no public labelled dataset bundled with the app, so the Random Forest i
 
 ### API
 
-Interactive docs are at `/api/docs`. Every data endpoint requires `Authorization: Bearer <profile key>`.
+Interactive docs are at `/api/docs`. Every data endpoint requires `Authorization: Bearer <token>`, either a guest key or an account session token.
 
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/api/health` | Health and storage status |
-| POST | `/api/profiles` | Create a private profile (returns the key once) |
+| POST | `/api/auth/register` | Create an account (upgrades the calling guest, keeping entries) |
+| POST | `/api/auth/login` | Sign in with email and password; returns a session token |
+| POST | `/api/auth/logout` | End this device's session |
+| POST | `/api/profiles` | Start a guest journal (returns its recovery key once) |
 | GET / PATCH / DELETE | `/api/profile` | Read, update goals, or delete everything |
 | POST | `/api/analyze` | Unsaved tone preview |
 | POST | `/api/entries` | Analyse and save a check-in (`/api/predict` kept as an alias) |
@@ -125,7 +132,7 @@ python -m pytest
 
 The project deploys on Vercel's Python runtime through `vercel.json`; pushing to `main` triggers a production deployment.
 
-**Persistent storage:** Vercel's filesystem is read-only apart from `/tmp`, which is wiped between cold starts and is not shared between instances. Without a database the app still works, but saved journals do not survive on the hosted version. For durable storage, create a PostgreSQL database (for example Neon through the Vercel Marketplace, or Supabase) and set:
+**Persistent storage (required for accounts):** Vercel's filesystem is read-only apart from `/tmp`, which is wiped between cold starts and is not shared between instances. Without a database the app still works, but saved journals do not survive on the hosted version. For durable storage, create a PostgreSQL database (for example Neon through the Vercel Marketplace, or Supabase) and set:
 
 ```
 DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require

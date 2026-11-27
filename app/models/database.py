@@ -27,6 +27,8 @@ from sqlalchemy import (
     event,
     func,
     insert,
+    inspect,
+    text,
     or_,
     select,
     update,
@@ -50,6 +52,21 @@ profiles = Table(
     Column("step_goal", Integer, nullable=False, default=7000),
     Column("created_at", String(32), nullable=False),
     Column("last_seen_at", String(32), nullable=False),
+    # Set when a guest creates an account (or someone registers directly).
+    Column("email", String(254), nullable=True),
+    Column("password_hash", String(255), nullable=True),
+)
+profiles_email_index = Index("ux_profiles_email", profiles.c.email, unique=True)
+
+# Sign-in sessions for accounts: one row per signed-in device.
+sessions = Table(
+    "sessions",
+    metadata,
+    Column("id", String(32), primary_key=True),
+    Column("profile_id", String(32), ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False, index=True),
+    Column("token_hash", String(64), nullable=False, unique=True),
+    Column("created_at", String(32), nullable=False),
+    Column("last_used_at", String(32), nullable=False),
 )
 
 entries = Table(
@@ -115,8 +132,21 @@ def init_engine(url: str) -> Engine:
 
 
 def init_db() -> None:
-    metadata.create_all(get_engine())
+    engine = get_engine()
+    metadata.create_all(engine)
+    _migrate(engine)
     logger.info("Database ready (%s)", get_engine().url.get_backend_name())
+
+
+def _migrate(engine: Engine) -> None:
+    """Add columns introduced after a database was first created."""
+    existing = {c["name"] for c in inspect(engine).get_columns("profiles")}
+    with engine.begin() as conn:
+        for name, ddl in (("email", "VARCHAR(254)"), ("password_hash", "VARCHAR(255)")):
+            if name not in existing:
+                conn.execute(text(f"ALTER TABLE profiles ADD COLUMN {name} {ddl}"))
+                logger.info("Migrated: added profiles.%s", name)
+    profiles_email_index.create(engine, checkfirst=True)
 
 
 def ping() -> bool:
@@ -160,6 +190,8 @@ def _entry_to_dict(row: Any, include_journal: bool = True) -> dict[str, Any]:
 def _profile_to_dict(row: Any) -> dict[str, Any]:
     data = dict(row._mapping)
     data.pop("token_hash", None)
+    data.pop("password_hash", None)
+    data["has_account"] = bool(data.get("email"))
     return data
 
 
@@ -182,6 +214,7 @@ def create_profile(profile_id: str, token_hash: str, display_name: str = "") -> 
     with get_engine().begin() as conn:
         conn.execute(insert(profiles).values(**values))
     values.pop("token_hash")
+    values.update(email=None, has_account=False)
     return values
 
 
@@ -208,9 +241,61 @@ def update_profile(profile_id: str, changes: dict[str, Any]) -> dict[str, Any] |
 
 def delete_profile(profile_id: str) -> None:
     with get_engine().begin() as conn:
-        # Explicit child delete: SQLite only cascades with the FK pragma on.
+        # Explicit child deletes: SQLite only cascades with the FK pragma on.
         conn.execute(delete(entries).where(entries.c.profile_id == profile_id))
+        conn.execute(delete(sessions).where(sessions.c.profile_id == profile_id))
         conn.execute(delete(profiles).where(profiles.c.id == profile_id))
+
+
+# --------------------------------------------------------------------------- #
+# Accounts and sessions
+# --------------------------------------------------------------------------- #
+
+def get_credentials(email: str) -> tuple[str, str] | None:
+    """(profile_id, password_hash) for an email address, if registered."""
+    with get_engine().connect() as conn:
+        row = conn.execute(
+            select(profiles.c.id, profiles.c.password_hash).where(profiles.c.email == email)
+        ).first()
+    return (row[0], row[1]) if row and row[1] else None
+
+
+def email_taken(email: str) -> bool:
+    with get_engine().connect() as conn:
+        return conn.execute(select(profiles.c.id).where(profiles.c.email == email)).first() is not None
+
+
+def set_credentials(profile_id: str, email: str, password_hash: str, display_name: str | None = None) -> dict[str, Any] | None:
+    values: dict[str, Any] = {"email": email, "password_hash": password_hash}
+    if display_name:
+        values["display_name"] = display_name
+    with get_engine().begin() as conn:
+        conn.execute(update(profiles).where(profiles.c.id == profile_id).values(**values))
+        row = conn.execute(select(profiles).where(profiles.c.id == profile_id)).first()
+    return _profile_to_dict(row) if row else None
+
+
+def create_session(session_id: str, profile_id: str, token_hash: str) -> None:
+    now = utcnow_iso()
+    with get_engine().begin() as conn:
+        conn.execute(insert(sessions).values(
+            id=session_id, profile_id=profile_id, token_hash=token_hash, created_at=now, last_used_at=now))
+
+
+def get_profile_by_session(token_hash: str) -> dict[str, Any] | None:
+    with get_engine().begin() as conn:
+        row = conn.execute(
+            select(profiles).join(sessions, sessions.c.profile_id == profiles.c.id)
+            .where(sessions.c.token_hash == token_hash)
+        ).first()
+        if row:
+            conn.execute(update(sessions).where(sessions.c.token_hash == token_hash).values(last_used_at=utcnow_iso()))
+    return _profile_to_dict(row) if row else None
+
+
+def delete_session(token_hash: str) -> None:
+    with get_engine().begin() as conn:
+        conn.execute(delete(sessions).where(sessions.c.token_hash == token_hash))
 
 
 # --------------------------------------------------------------------------- #

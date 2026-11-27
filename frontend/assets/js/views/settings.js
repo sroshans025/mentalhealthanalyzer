@@ -1,4 +1,5 @@
 import { downloadExport } from "./export.js";
+import { confirmAndSignOut } from "./account.js";
 import { api, ApiError, tokenStore } from "../api.js";
 import { session, theme } from "../session.js";
 import { h, icon, iconEl, button, setBusy, toast, confirmDialog, modal, fmt } from "../ui.js";
@@ -90,17 +91,33 @@ export function render(root, { navigate }) {
   const restoreBtn = button("Use a recovery key", { size: "sm", icon: "key", onclick: openRestore });
   const exportCsv = button("Export CSV", { size: "sm", icon: "download", onclick: () => downloadExport("csv") });
   const exportJson = button("Export JSON", { size: "sm", icon: "download", onclick: () => downloadExport("json") });
-  const deleteBtn = button("Delete all my data", { variant: "danger", size: "sm", icon: "trash", onclick: deleteAll });
+  const deleteBtn = button(p.has_account ? "Delete account" : "Delete all my data", { variant: "danger", size: "sm", icon: "trash", onclick: deleteAll });
+
+  const signOutBtn = button(p.has_account ? "Sign out" : "Leave guest journal", { size: "sm", icon: "logOut", onclick: () => signOut() });
+  const accountSection = p.has_account
+    ? section("Account", "You can sign in with this email on any device.",
+        h("div", { class: "row-between wrap", style: { gap: "14px" } },
+          h("div", { class: "row" }, h("span", { class: "avatar", "aria-hidden": "true" }, (p.display_name || p.email)[0]),
+            h("div", {}, h("strong", {}, p.display_name || p.email.split("@")[0]), h("p", { class: "small muted" }, p.email))),
+          signOutBtn))
+    : section("Account", "You're using a guest journal. It lives only in this browser unless you save your recovery key.",
+        h("div", { class: "stack", style: { gap: "12px" } },
+          h("div", { class: "upgrade-note", style: { marginTop: 0 }, html: icon("cloud") },
+            h("span", {}, "Create an account to keep everything you've written and sign in from any device.")),
+          h("div", { class: "row wrap" },
+            h("a", { class: "btn btn-primary btn-sm", href: "#/sign-in?mode=register" }, "Create an account"),
+            signOutBtn)));
 
   root.append(
     h("div", { class: "page-head" }, h("div", {}, h("h1", {}, "Settings"), h("p", {}, "Personalise your goals, appearance and privacy."))),
     h("section", { class: "card" },
+      accountSection,
       section("Profile & daily goals", "Goals are used for habit hints during check-in, goal tracking on the dashboard and personal insights.", profileForm),
       section("Appearance", "Choose a theme or follow your device setting.", themeGroup),
-      section("Recovery key", "There are no passwords. This key is the only way to open your journal on another device or browser. Keep it private.",
+      p.has_account ? null : section("Recovery key", "Guest journals have no password. This key is the only way to open your journal on another device or browser. Keep it private.",
         h("div", { class: "stack", style: { gap: "12px" } },
           h("div", { class: "key-box" }, keyCode, revealBtn, copyBtn),
-          h("p", { class: "small muted" }, `Profile created ${fmt.date(p.created_at)}.`),
+          h("p", { class: "small muted" }, `Journal started ${fmt.date(p.created_at)}.`),
           h("div", {}, restoreBtn))),
       section("Your data", "Download everything you've written, or erase it permanently.",
         h("div", { class: "stack", style: { gap: "14px" } },
@@ -110,10 +127,12 @@ export function render(root, { navigate }) {
             : null,
           h("div", { class: "row wrap" }, exportCsv, exportJson),
           h("div", { class: "danger-zone" },
-            h("div", {}, h("strong", {}, "Delete profile and journal"), h("p", { class: "small muted" }, "Removes every entry and your goals from the server. This can't be undone.")),
+            h("div", {}, h("strong", {}, p.has_account ? "Delete account and journal" : "Delete guest journal"), h("p", { class: "small muted" }, "Removes every entry, your goals and your profile from the server. This can't be undone.")),
             deleteBtn))),
       section("About", "", h("p", { class: "small muted" },
         "Mental Health Predictor combines the tone of your writing with sleep, screen time and activity to estimate a daily wellbeing risk level. It is designed for self-reflection and is not a medical or diagnostic tool. If you are worried about your mental health, please speak to a qualified professional."))));
+
+  const signOut = () => confirmAndSignOut(navigate);
 
   function openRestore() {
     const input = h("input", { class: "input", placeholder: "mhp_…", autocomplete: "off", spellcheck: "false", "aria-label": "Recovery key" });
@@ -156,10 +175,9 @@ export function render(root, { navigate }) {
     setBusy(deleteBtn, true, "Deleting…");
     try {
       await api.deleteProfile();
-      try { localStorage.removeItem("mhp.draft"); } catch { /* ignore */ }
-      await session.reset();
-      toast("All data deleted", { type: "success", message: "A new, empty private profile has been created." });
-      navigate("dashboard");
+      session.forget();
+      toast("All data deleted", { type: "success", message: "Your journal and profile have been permanently removed." });
+      navigate("sign-in");
     } catch (e) {
       toast("Couldn't delete data", { type: "error", message: e.message });
       setBusy(deleteBtn, false);
