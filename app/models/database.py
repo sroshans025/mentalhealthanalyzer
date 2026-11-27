@@ -1,53 +1,367 @@
-import sqlite3
-import os
-from datetime import datetime
+"""Persistence layer.
 
-# Use /tmp directory if running on Vercel (read-only filesystem)
-if os.environ.get('VERCEL') == '1':
-    DB_PATH = '/tmp/mental_health.db'
-else:
-    DB_PATH = os.path.join(os.path.dirname(__file__), '..', '..', 'mental_health.db')
+SQLAlchemy Core is used so the same code runs on SQLite (local development,
+default) and on PostgreSQL (set ``DATABASE_URL`` for durable hosted storage).
+"""
+from __future__ import annotations
 
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS predictions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp TEXT,
-            journal TEXT,
-            sleep_hours REAL,
-            screen_time REAL,
-            activity_level INTEGER,
-            sentiment_score REAL,
-            emotion TEXT,
-            risk_level TEXT,
-            confidence REAL,
-            explanation TEXT
+import json
+import logging
+from datetime import datetime, timedelta, timezone
+from typing import Any, Iterable
+
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    MetaData,
+    String,
+    Table,
+    Text,
+    and_,
+    create_engine,
+    delete,
+    event,
+    func,
+    insert,
+    or_,
+    select,
+    update,
+)
+from sqlalchemy.engine import Engine
+
+from app.config import settings
+
+logger = logging.getLogger(__name__)
+
+metadata = MetaData()
+
+profiles = Table(
+    "profiles",
+    metadata,
+    Column("id", String(32), primary_key=True),
+    Column("token_hash", String(64), nullable=False, unique=True),
+    Column("display_name", String(40), nullable=False, default=""),
+    Column("sleep_goal", Float, nullable=False, default=8.0),
+    Column("screen_limit", Float, nullable=False, default=4.0),
+    Column("step_goal", Integer, nullable=False, default=7000),
+    Column("created_at", String(32), nullable=False),
+    Column("last_seen_at", String(32), nullable=False),
+)
+
+entries = Table(
+    "entries",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("profile_id", String(32), ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False),
+    Column("created_at", String(32), nullable=False),
+    Column("journal", Text, nullable=False),
+    Column("journal_hash", String(64), nullable=False),
+    Column("sleep_hours", Float, nullable=False),
+    Column("screen_time", Float, nullable=False),
+    Column("activity_level", Integer, nullable=False),
+    Column("sentiment_score", Float, nullable=False),
+    Column("emotion", String(16), nullable=False),
+    Column("risk_level", String(8), nullable=False),
+    Column("risk_score", Integer, nullable=False),
+    Column("confidence", Float, nullable=False),
+    Column("explanation", Text, nullable=False),
+    Column("factors", Text, nullable=False, default="[]"),
+    Column("tags", String(255), nullable=False, default=""),
+    Column("crisis_flag", Boolean, nullable=False, default=False),
+    Index("ix_entries_profile_created", "profile_id", "created_at"),
+)
+
+RISK_SCORES = {"Low": 1, "Medium": 2, "High": 3}
+
+_engine: Engine | None = None
+
+
+def utcnow_iso() -> str:
+    """ISO-8601 UTC timestamp with a fixed width so string ordering == time ordering."""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+
+
+def get_engine() -> Engine:
+    global _engine
+    if _engine is None:
+        init_engine(settings.database_url)
+    assert _engine is not None
+    return _engine
+
+
+def init_engine(url: str) -> Engine:
+    """(Re)create the engine. Tests call this with a temporary database."""
+    global _engine
+    if _engine is not None:
+        _engine.dispose()
+    kwargs: dict[str, Any] = {"future": True, "pool_pre_ping": True}
+    if url.startswith("sqlite"):
+        kwargs["connect_args"] = {"check_same_thread": False}
+    _engine = create_engine(url, **kwargs)
+
+    if url.startswith("sqlite"):
+        @event.listens_for(_engine, "connect")
+        def _sqlite_pragmas(dbapi_conn, _record):  # pragma: no cover - driver hook
+            cur = dbapi_conn.cursor()
+            cur.execute("PRAGMA foreign_keys=ON")
+            cur.execute("PRAGMA journal_mode=WAL")
+            cur.close()
+
+    return _engine
+
+
+def init_db() -> None:
+    metadata.create_all(get_engine())
+    logger.info("Database ready (%s)", get_engine().url.get_backend_name())
+
+
+def ping() -> bool:
+    try:
+        with get_engine().connect() as conn:
+            conn.execute(select(1))
+        return True
+    except Exception:  # pragma: no cover - only on infrastructure failure
+        logger.exception("Database ping failed")
+        return False
+
+
+# --------------------------------------------------------------------------- #
+# Serialisation helpers
+# --------------------------------------------------------------------------- #
+
+def _tags_to_db(tags: Iterable[str]) -> str:
+    cleaned = sorted({t for t in tags if t})
+    return "," + ",".join(cleaned) + "," if cleaned else ""
+
+
+def _tags_from_db(raw: str | None) -> list[str]:
+    return [t for t in (raw or "").split(",") if t]
+
+
+def _entry_to_dict(row: Any, include_journal: bool = True) -> dict[str, Any]:
+    data = dict(row._mapping)
+    data.pop("journal_hash", None)
+    data.pop("profile_id", None)
+    data["tags"] = _tags_from_db(data.get("tags"))
+    try:
+        data["factors"] = json.loads(data.get("factors") or "[]")
+    except ValueError:
+        data["factors"] = []
+    data["crisis_flag"] = bool(data.get("crisis_flag"))
+    if not include_journal:
+        data.pop("journal", None)
+    return data
+
+
+def _profile_to_dict(row: Any) -> dict[str, Any]:
+    data = dict(row._mapping)
+    data.pop("token_hash", None)
+    return data
+
+
+# --------------------------------------------------------------------------- #
+# Profiles
+# --------------------------------------------------------------------------- #
+
+def create_profile(profile_id: str, token_hash: str, display_name: str = "") -> dict[str, Any]:
+    now = utcnow_iso()
+    values = {
+        "id": profile_id,
+        "token_hash": token_hash,
+        "display_name": display_name,
+        "sleep_goal": 8.0,
+        "screen_limit": 4.0,
+        "step_goal": 7000,
+        "created_at": now,
+        "last_seen_at": now,
+    }
+    with get_engine().begin() as conn:
+        conn.execute(insert(profiles).values(**values))
+    values.pop("token_hash")
+    return values
+
+
+def get_profile_by_token_hash(token_hash: str) -> dict[str, Any] | None:
+    with get_engine().connect() as conn:
+        row = conn.execute(select(profiles).where(profiles.c.token_hash == token_hash)).first()
+    return _profile_to_dict(row) if row else None
+
+
+def touch_profile(profile_id: str) -> None:
+    with get_engine().begin() as conn:
+        conn.execute(update(profiles).where(profiles.c.id == profile_id).values(last_seen_at=utcnow_iso()))
+
+
+def update_profile(profile_id: str, changes: dict[str, Any]) -> dict[str, Any] | None:
+    allowed = {"display_name", "sleep_goal", "screen_limit", "step_goal"}
+    changes = {k: v for k, v in changes.items() if k in allowed}
+    with get_engine().begin() as conn:
+        if changes:
+            conn.execute(update(profiles).where(profiles.c.id == profile_id).values(**changes))
+        row = conn.execute(select(profiles).where(profiles.c.id == profile_id)).first()
+    return _profile_to_dict(row) if row else None
+
+
+def delete_profile(profile_id: str) -> None:
+    with get_engine().begin() as conn:
+        # Explicit child delete: SQLite only cascades with the FK pragma on.
+        conn.execute(delete(entries).where(entries.c.profile_id == profile_id))
+        conn.execute(delete(profiles).where(profiles.c.id == profile_id))
+
+
+# --------------------------------------------------------------------------- #
+# Entries
+# --------------------------------------------------------------------------- #
+
+def find_recent_duplicate(profile_id: str, journal_hash: str, within_seconds: int = 600) -> int | None:
+    """Return the id of an identical entry saved within the window, if any."""
+    since = (datetime.now(timezone.utc) - timedelta(seconds=within_seconds)).strftime(
+        "%Y-%m-%dT%H:%M:%S.%f"
+    )[:-3] + "Z"
+    with get_engine().connect() as conn:
+        row = conn.execute(
+            select(entries.c.id).where(
+                and_(
+                    entries.c.profile_id == profile_id,
+                    entries.c.journal_hash == journal_hash,
+                    entries.c.created_at >= since,
+                )
+            )
+        ).first()
+    return row[0] if row else None
+
+
+def save_entry(profile_id: str, data: dict[str, Any]) -> dict[str, Any]:
+    values = {
+        "profile_id": profile_id,
+        "created_at": utcnow_iso(),
+        "journal": data["journal"],
+        "journal_hash": data["journal_hash"],
+        "sleep_hours": data["sleep_hours"],
+        "screen_time": data["screen_time"],
+        "activity_level": data["activity_level"],
+        "sentiment_score": data["sentiment_score"],
+        "emotion": data["emotion"],
+        "risk_level": data["risk_level"],
+        "risk_score": RISK_SCORES[data["risk_level"]],
+        "confidence": data["confidence"],
+        "explanation": data["explanation"],
+        "factors": json.dumps(data.get("factors", [])),
+        "tags": _tags_to_db(data.get("tags", [])),
+        "crisis_flag": bool(data.get("crisis_flag", False)),
+    }
+    with get_engine().begin() as conn:
+        result = conn.execute(insert(entries).values(**values))
+        entry_id = result.inserted_primary_key[0]
+        row = conn.execute(select(entries).where(entries.c.id == entry_id)).first()
+    return _entry_to_dict(row)
+
+
+def get_entry(profile_id: str, entry_id: int) -> dict[str, Any] | None:
+    with get_engine().connect() as conn:
+        row = conn.execute(
+            select(entries).where(and_(entries.c.id == entry_id, entries.c.profile_id == profile_id))
+        ).first()
+    return _entry_to_dict(row) if row else None
+
+
+def delete_entry(profile_id: str, entry_id: int) -> bool:
+    with get_engine().begin() as conn:
+        result = conn.execute(
+            delete(entries).where(and_(entries.c.id == entry_id, entries.c.profile_id == profile_id))
         )
-    ''')
-    conn.commit()
-    conn.close()
+    return result.rowcount > 0
 
-def save_prediction(data):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('''
-        INSERT INTO predictions 
-        (timestamp, journal, sleep_hours, screen_time, activity_level, sentiment_score, emotion, risk_level, confidence, explanation)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (
-        datetime.now().isoformat(),
-        data['journal'], data['sleep_hours'], data['screen_time'], data['activity_level'],
-        data['sentiment_score'], data['emotion'], data['risk_level'], data['confidence'], data['explanation']
-    ))
-    conn.commit()
-    conn.close()
 
-def get_history():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('SELECT timestamp, risk_level, emotion FROM predictions ORDER BY timestamp DESC LIMIT 30')
-    rows = cursor.fetchall()
-    conn.close()
-    return [{"timestamp": r[0], "risk_level": r[1], "emotion": r[2]} for r in rows]
+_SORTS = {
+    "newest": [entries.c.created_at.desc(), entries.c.id.desc()],
+    "oldest": [entries.c.created_at.asc(), entries.c.id.asc()],
+    "risk_desc": [entries.c.risk_score.desc(), entries.c.created_at.desc()],
+    "risk_asc": [entries.c.risk_score.asc(), entries.c.created_at.desc()],
+    "sentiment_desc": [entries.c.sentiment_score.desc(), entries.c.created_at.desc()],
+    "sentiment_asc": [entries.c.sentiment_score.asc(), entries.c.created_at.desc()],
+}
+
+
+def _escape_like(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def list_entries(
+    profile_id: str,
+    *,
+    q: str | None = None,
+    risk: list[str] | None = None,
+    emotion: list[str] | None = None,
+    tag: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    sort: str = "newest",
+    page: int = 1,
+    page_size: int = 10,
+) -> dict[str, Any]:
+    conditions = [entries.c.profile_id == profile_id]
+    if q:
+        pattern = f"%{_escape_like(q.lower())}%"
+        conditions.append(
+            or_(
+                func.lower(entries.c.journal).like(pattern, escape="\\"),
+                func.lower(entries.c.explanation).like(pattern, escape="\\"),
+            )
+        )
+    if risk:
+        conditions.append(entries.c.risk_level.in_(risk))
+    if emotion:
+        conditions.append(entries.c.emotion.in_(emotion))
+    if tag:
+        conditions.append(entries.c.tags.like(f"%,{_escape_like(tag)},%", escape="\\"))
+    if date_from:
+        conditions.append(entries.c.created_at >= date_from)
+    if date_to:
+        conditions.append(entries.c.created_at <= date_to)
+
+    where = and_(*conditions)
+    with get_engine().connect() as conn:
+        total = conn.execute(select(func.count()).select_from(entries).where(where)).scalar_one()
+        rows = conn.execute(
+            select(entries)
+            .where(where)
+            .order_by(*_SORTS.get(sort, _SORTS["newest"]))
+            .limit(page_size)
+            .offset((page - 1) * page_size)
+        ).all()
+    pages = max(1, -(-total // page_size))
+    return {
+        "items": [_entry_to_dict(r) for r in rows],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "pages": pages,
+    }
+
+
+def entries_since(profile_id: str, since_iso: str | None = None) -> list[dict[str, Any]]:
+    """All of a profile's entries (oldest first), optionally from a point in time."""
+    conditions = [entries.c.profile_id == profile_id]
+    if since_iso:
+        conditions.append(entries.c.created_at >= since_iso)
+    with get_engine().connect() as conn:
+        rows = conn.execute(
+            select(entries).where(and_(*conditions)).order_by(entries.c.created_at.asc())
+        ).all()
+    return [_entry_to_dict(r) for r in rows]
+
+
+def list_tags(profile_id: str) -> list[str]:
+    with get_engine().connect() as conn:
+        rows = conn.execute(
+            select(entries.c.tags).where(and_(entries.c.profile_id == profile_id, entries.c.tags != ""))
+        ).all()
+    found: set[str] = set()
+    for (raw,) in rows:
+        found.update(_tags_from_db(raw))
+    return sorted(found)

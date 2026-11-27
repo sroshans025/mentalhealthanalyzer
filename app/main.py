@@ -1,24 +1,141 @@
-from fastapi import FastAPI
+import logging
+import time
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from app.routes.api import router
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from app.config import APP_NAME, APP_VERSION, FRONTEND_DIR, settings
 from app.models.database import init_db
-import os
+from app.routes.api import router
 
-app = FastAPI(title="AI Mental Health Risk Analyzer")
+logging.basicConfig(
+    level=settings.log_level,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+logger = logging.getLogger("app")
 
-# Initialize database on startup
-@app.on_event("startup")
-def on_startup():
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
     init_db()
+    if settings.is_ephemeral_storage:
+        logger.warning("Using ephemeral /tmp SQLite storage. Set DATABASE_URL for persistent data.")
+    yield
 
-# Include API routes
+
+app = FastAPI(title=APP_NAME, version=APP_VERSION, lifespan=lifespan,
+              docs_url="/api/docs", redoc_url=None, openapi_url="/api/openapi.json")
+
+app.add_middleware(GZipMiddleware, minimum_size=1024)
+if settings.cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_methods=["GET", "POST", "PATCH", "DELETE"],
+        allow_headers=["Authorization", "Content-Type"],
+    )
+
+CSP = (
+    "default-src 'self'; "
+    "script-src 'self'; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com; "
+    "img-src 'self' data:; "
+    "connect-src 'self'; "
+    "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+)
+# The interactive API docs load assets from a CDN, so they get a looser policy.
+DOCS_CSP = (
+    "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https://fastapi.tiangolo.com; "
+    "frame-ancestors 'none'"
+)
+
+
+@app.middleware("http")
+async def security_and_logging(request: Request, call_next):
+    started = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+        response = JSONResponse(
+            status_code=500,
+            content={"error": {"code": 500, "message": "Something went wrong on our side. Please try again."}},
+        )
+    path = request.url.path
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+    response.headers.setdefault("Content-Security-Policy", DOCS_CSP if path == "/api/docs" else CSP)
+    if request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https":
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    if path.startswith("/api/"):
+        response.headers.setdefault("Cache-Control", "no-store")
+    elif path.startswith("/static/"):
+        # Asset URLs carry a version query string, so they can be cached hard.
+        cache = "public, max-age=31536000, immutable" if request.url.query else "public, max-age=3600"
+        response.headers.setdefault("Cache-Control", cache)
+    # Never log query strings or bodies: they can contain journal text.
+    logger.info("%s %s %s %.0fms", request.method, path, response.status_code,
+                (time.perf_counter() - started) * 1000)
+    return response
+
+
+def _error(status_code: int, message, details=None, headers=None) -> JSONResponse:
+    body = {"error": {"code": status_code, "message": message}}
+    if details is not None:
+        body["error"]["details"] = details
+    return JSONResponse(status_code=status_code, content=body, headers=headers)
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_error(_: Request, exc: StarletteHTTPException):
+    detail = exc.detail
+    if isinstance(detail, dict):
+        message = detail.get("message", "Request failed.")
+        extra = {k: v for k, v in detail.items() if k != "message"} or None
+        return _error(exc.status_code, message, extra, getattr(exc, "headers", None))
+    if exc.status_code == 404 and detail == "Not Found":
+        detail = "The requested resource was not found."
+    return _error(exc.status_code, detail, headers=getattr(exc, "headers", None))
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error(_: Request, exc: RequestValidationError):
+    fields = []
+    for err in exc.errors():
+        loc = [str(p) for p in err.get("loc", []) if p not in ("body", "query", "path")]
+        msg = err.get("msg", "Invalid value")
+        if msg.startswith("Value error, "):
+            msg = msg[len("Value error, "):]
+        fields.append({"field": ".".join(loc) or None, "message": msg})
+    message = fields[0]["message"] if len(fields) == 1 else "Some fields need attention."
+    return _error(422, message, fields)
+
+
 app.include_router(router, prefix="/api")
 
-# Serve the frontend
-frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")
-app.mount("/static", StaticFiles(directory=frontend_dir), name="static")
+app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
-@app.get("/")
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    return FileResponse(FRONTEND_DIR / "assets" / "img" / "favicon.svg", media_type="image/svg+xml")
+
+
+@app.get("/", include_in_schema=False)
 def serve_index():
-    return FileResponse(os.path.join(frontend_dir, "index.html"))
+    return FileResponse(FRONTEND_DIR / "index.html", headers={"Cache-Control": "no-cache"})
+
+
+@app.api_route("/api/{rest:path}", methods=["GET", "POST", "PATCH", "DELETE", "PUT"], include_in_schema=False)
+def api_not_found(rest: str):  # noqa: ARG001 - path param required by the route
+    raise HTTPException(404, "Unknown API endpoint.")
