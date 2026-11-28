@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable
 
@@ -118,6 +119,13 @@ def init_engine(url: str) -> Engine:
     kwargs: dict[str, Any] = {"future": True, "pool_pre_ping": True}
     if url.startswith("sqlite"):
         kwargs["connect_args"] = {"check_same_thread": False}
+    else:
+        # Serverless: a few connections per instance, recycled before hosted
+        # poolers drop idle ones. Prepared statements are disabled because
+        # transaction-mode poolers (e.g. Neon's PgBouncer endpoint) can route
+        # consecutive statements to different server connections.
+        kwargs.update(pool_size=3, max_overflow=2, pool_recycle=240, pool_timeout=10)
+        kwargs["connect_args"] = {"prepare_threshold": None, "connect_timeout": 5}
     _engine = create_engine(url, **kwargs)
 
     if url.startswith("sqlite"):
@@ -131,11 +139,22 @@ def init_engine(url: str) -> Engine:
     return _engine
 
 
-def init_db() -> None:
+def init_db(attempts: int = 3) -> None:
+    """Create tables and run migrations. Retries because several serverless
+    instances can start at once and race to create the same objects."""
     engine = get_engine()
-    metadata.create_all(engine)
-    _migrate(engine)
-    logger.info("Database ready (%s)", get_engine().url.get_backend_name())
+    for attempt in range(1, attempts + 1):
+        try:
+            metadata.create_all(engine)
+            _migrate(engine)
+            logger.info("Database ready (%s)", engine.url.get_backend_name())
+            return
+        except Exception:
+            if attempt == attempts:
+                logger.exception("Database setup failed; requests will retry the connection")
+                return
+            logger.warning("Database setup attempt %d failed, retrying", attempt)
+            time.sleep(0.5 * attempt)
 
 
 def _migrate(engine: Engine) -> None:
